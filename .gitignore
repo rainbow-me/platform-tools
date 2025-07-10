@@ -32,6 +32,6 @@ __debug_bin*
 .load-cache-env
 
 # Test results XML file
-junit-tests.xml
+junit-tests*
 coverage.out
 coverage.html

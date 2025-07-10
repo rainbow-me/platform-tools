@@ -29,15 +29,15 @@ type RequestInfo struct {
 	AllHeaders map[string]string `json:"allHeaders,omitempty"`
 }
 
-// MetadataParser extracts RequestInfo from gRPC metadata
-type MetadataParser struct {
+// Parser extracts RequestInfo from gRPC metadata
+type Parser struct {
 	includeAllHeaders bool
 	maskSensitive     bool
 }
 
-// NewMetadataParser creates a new metadata parser
-func NewMetadataParser(includeAllHeaders, maskSensitive bool) *MetadataParser {
-	return &MetadataParser{
+// NewRequestParser creates a new metadata parser
+func NewRequestParser(includeAllHeaders, maskSensitive bool) *Parser {
+	return &Parser{
 		includeAllHeaders: includeAllHeaders,
 		maskSensitive:     maskSensitive,
 	}
@@ -61,7 +61,7 @@ func NewMetadataParser(includeAllHeaders, maskSensitive bool) *MetadataParser {
 // Returns:
 //   - context.Context: Updated context with request ID in metadata (only if request ID was generated)
 //   - *RequestInfo: Populated request information with guaranteed request ID
-func (p *MetadataParser) ParseMetadata(ctx context.Context) (context.Context, *RequestInfo) {
+func (p *Parser) ParseMetadata(ctx context.Context) (context.Context, *RequestInfo) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		// No metadata present, create new metadata with generated request ID
@@ -104,7 +104,7 @@ func (p *MetadataParser) ParseMetadata(ctx context.Context) (context.Context, *R
 // extractRequestIDs extracts various request/trace IDs from metadata.
 // ONLY generates and adds a request ID to metadata if none is found in the headers.
 // Returns the updated context and a boolean indicating if a request ID was generated.
-func (p *MetadataParser) extractRequestIDs(
+func (p *Parser) extractRequestIDs(
 	ctx context.Context,
 	md metadata.MD,
 	info *RequestInfo,
@@ -162,7 +162,7 @@ func (p *MetadataParser) extractRequestIDs(
 
 // addRequestIDToMetadata adds the generated request ID to the gRPC metadata
 // so it can be propagated to downstream services and accessed by other interceptors.
-func (p *MetadataParser) addRequestIDToMetadata(
+func (p *Parser) addRequestIDToMetadata(
 	ctx context.Context,
 	existingMD metadata.MD,
 	requestID string,
@@ -180,14 +180,14 @@ func (p *MetadataParser) addRequestIDToMetadata(
 // generateRequestID creates a new unique request identifier.
 // Uses UUID v4 to ensure uniqueness across distributed systems.
 // Returns a string representation of the generated UUID.
-func (p *MetadataParser) generateRequestID() string {
+func (p *Parser) generateRequestID() string {
 	// Generate a new UUID for the request ID
 	requestUUID := uuid.New()
 	return requestUUID.String()
 }
 
 // extractAuthentication extracts authentication information
-func (p *MetadataParser) extractAuthentication(md metadata.MD, info *RequestInfo) {
+func (p *Parser) extractAuthentication(md metadata.MD, info *RequestInfo) {
 	// Authorization header
 	if authHeader := p.getFirstValue(md, HeaderAuthorization); authHeader != "" {
 		info.HasAuth = true
@@ -202,7 +202,7 @@ func (p *MetadataParser) extractAuthentication(md metadata.MD, info *RequestInfo
 }
 
 // extractAllHeaders extracts all headers for debugging
-func (p *MetadataParser) extractAllHeaders(md metadata.MD, info *RequestInfo) {
+func (p *Parser) extractAllHeaders(md metadata.MD, info *RequestInfo) {
 	info.AllHeaders = make(map[string]string)
 
 	for key, values := range md {
@@ -218,7 +218,7 @@ func (p *MetadataParser) extractAllHeaders(md metadata.MD, info *RequestInfo) {
 }
 
 // Helper functions
-func (p *MetadataParser) getFirstValue(md metadata.MD, keys ...string) string {
+func (p *Parser) getFirstValue(md metadata.MD, keys ...string) string {
 	for _, key := range keys {
 		if values := md.Get(key); len(values) > 0 && values[0] != "" {
 			return values[0]
@@ -227,7 +227,7 @@ func (p *MetadataParser) getFirstValue(md metadata.MD, keys ...string) string {
 	return ""
 }
 
-func (p *MetadataParser) extractAuthType(authHeader string) string {
+func (p *Parser) extractAuthType(authHeader string) string {
 	authHeader = strings.ToLower(authHeader)
 
 	switch {
@@ -244,14 +244,14 @@ func (p *MetadataParser) extractAuthType(authHeader string) string {
 	}
 }
 
-func (p *MetadataParser) maskToken(token string) string {
+func (p *Parser) maskToken(token string) string {
 	if len(token) <= 10 {
 		return "***"
 	}
 	return token[:4] + "***" + token[len(token)-4:]
 }
 
-func (p *MetadataParser) isSensitiveHeader(key string) bool {
+func (p *Parser) isSensitiveHeader(key string) bool {
 	sensitiveHeaders := []string{
 		HeaderAuthorization,
 	}

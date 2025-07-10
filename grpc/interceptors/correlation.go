@@ -2,11 +2,12 @@ package interceptors
 
 import (
 	"context"
-	"github.com/rainbow-me/platfomt-tools/grpc/correlation"
 	"strings"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+
+	"github.com/rainbow-me/platfomt-tools/grpc/correlation"
 )
 
 // UnaryClientInterceptor generates and attaches correlation headers to outgoing unary gRPC calls.
