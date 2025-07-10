@@ -1,0 +1,20 @@
+name: Common Module - Lint
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+    paths:
+      - common/**
+      - .github/**
+
+jobs:
+  external-ci:
+    uses: ./.github/workflows/lint.yml
+    secrets: inherit
+    with:
+      directory: common
+      version: v1.64.8 # changing here? don't forget to change the install_tools task

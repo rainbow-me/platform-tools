@@ -1,11 +1,14 @@
 name: CI lint
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches: [main]
+  workflow_call:
+    inputs:
+      directory:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
 
 concurrency: # cancel in-progress actions upon new branch push on the same PR, to avoid wasting compute time
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -27,6 +30,7 @@ jobs:
         uses: ./.github/actions/setup-go-with-cache
         with:
           personal-access-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          working-directory: ${{ inputs.directory }}
           cache-key: lint
 
       # Special action with the ability to print linter errors as PR comments
@@ -34,10 +38,10 @@ jobs:
         uses: golangci/golangci-lint-action@v6
         with:
           # Optional: version of golangci-lint to use in form of v1.2 or v1.2.3 or `latest` to use the latest version
-          version: v1.64.8 # changing here? don't forget to change Makefile!
+          version: ${{ inputs.version }}
 
           # Optional: working directory, useful for monorepos
-          # working-directory: somedir
+          working-directory: ${{ inputs.directory }}
 
           # Optional: golangci-lint command line arguments.
           # args: --issues-exit-code=0
