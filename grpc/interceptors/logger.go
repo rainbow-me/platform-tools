@@ -19,8 +19,8 @@ import (
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 
-	"github.com/rainbow-me/platfomt-tools/pkg/correlation"
-	"github.com/rainbow-me/platfomt-tools/pkg/headers"
+	"github.com/rainbow-me/platfomt-tools/grpc/correlation"
+	internalmetadata "github.com/rainbow-me/platfomt-tools/grpc/metadata"
 )
 
 // Structured logging field keys
@@ -42,7 +42,7 @@ const (
 	responseKey = "response"
 
 	// Client identification header
-	clientTaggingHeader = headers.HeaderClientTaggingHeader
+	clientTaggingHeader = internalmetadata.HeaderClientTaggingHeader
 )
 
 // Pre-compile regex for performance - avoid recompiling on each request

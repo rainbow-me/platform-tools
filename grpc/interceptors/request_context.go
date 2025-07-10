@@ -5,7 +5,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/rainbow-me/platfomt-tools/pkg/requestcontext"
+	"github.com/rainbow-me/platfomt-tools/grpc/metadata"
 )
 
 // Define a custom type for context keys to avoid collisions
@@ -22,7 +22,7 @@ func RequestContextUnaryServerInterceptor() grpc.UnaryServerInterceptor {
 		_ *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (interface{}, error) {
-		parser := requestcontext.NewMetadataParser(true, true)
+		parser := metadata.NewMetadataParser(true, true)
 		updatedCtx, requestInfo := parser.ParseMetadata(ctx)
 
 		// Add to context for handlers using custom context key type
@@ -36,7 +36,7 @@ func RequestContextUnaryServerInterceptor() grpc.UnaryServerInterceptor {
 }
 
 // GetRequestInfoFromContext extracts RequestInfo from context
-func GetRequestInfoFromContext(ctx context.Context) (*requestcontext.RequestInfo, bool) {
-	requestInfo, ok := ctx.Value(requestContextKey).(*requestcontext.RequestInfo)
+func GetRequestInfoFromContext(ctx context.Context) (*metadata.RequestInfo, bool) {
+	requestInfo, ok := ctx.Value(requestContextKey).(*metadata.RequestInfo)
 	return requestInfo, ok
 }

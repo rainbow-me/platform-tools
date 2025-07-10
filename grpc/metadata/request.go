@@ -1,4 +1,4 @@
-package requestcontext
+package metadata
 
 import (
 	"context"
@@ -9,8 +9,6 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/grpc/metadata"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
-
-	"github.com/rainbow-me/platfomt-tools/pkg/headers"
 )
 
 // RequestInfo contains extracted information from gRPC metadata
@@ -75,7 +73,7 @@ func (p *MetadataParser) ParseMetadata(ctx context.Context) (context.Context, *R
 
 		// Create new metadata with the generated request ID
 		newMD := metadata.New(map[string]string{
-			headers.HeaderXRequestID: requestID,
+			HeaderXRequestID: requestID,
 		})
 		updatedCtx := metadata.NewIncomingContext(ctx, newMD)
 
@@ -113,7 +111,7 @@ func (p *MetadataParser) extractRequestIDs(
 ) (context.Context, bool) {
 	// Check common request ID headers
 	requestIDHeaders := []string{
-		headers.HeaderXRequestID,
+		HeaderXRequestID,
 	}
 
 	// Try to extract request ID from headers
@@ -143,7 +141,7 @@ func (p *MetadataParser) extractRequestIDs(
 
 	// Check correlation ID headers
 	correlationHeaders := []string{
-		headers.HeaderXCorrelationID,
+		HeaderXCorrelationID,
 	}
 
 	for _, header := range correlationHeaders {
@@ -173,7 +171,7 @@ func (p *MetadataParser) addRequestIDToMetadata(
 	newMD := existingMD.Copy()
 
 	// Add the request ID to the metadata
-	newMD.Set(headers.HeaderXRequestID, requestID)
+	newMD.Set(HeaderXRequestID, requestID)
 
 	// Create a new context with the updated metadata
 	return metadata.NewIncomingContext(ctx, newMD)
@@ -191,7 +189,7 @@ func (p *MetadataParser) generateRequestID() string {
 // extractAuthentication extracts authentication information
 func (p *MetadataParser) extractAuthentication(md metadata.MD, info *RequestInfo) {
 	// Authorization header
-	if authHeader := p.getFirstValue(md, headers.HeaderAuthorization); authHeader != "" {
+	if authHeader := p.getFirstValue(md, HeaderAuthorization); authHeader != "" {
 		info.HasAuth = true
 		info.AuthType = p.extractAuthType(authHeader)
 
@@ -255,7 +253,7 @@ func (p *MetadataParser) maskToken(token string) string {
 
 func (p *MetadataParser) isSensitiveHeader(key string) bool {
 	sensitiveHeaders := []string{
-		headers.HeaderAuthorization,
+		HeaderAuthorization,
 	}
 
 	key = strings.ToLower(key)

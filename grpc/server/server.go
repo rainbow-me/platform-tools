@@ -1,4 +1,4 @@
-package grpcserver
+package server
 
 import (
 	grpcmiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
@@ -7,7 +7,7 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
-	"github.com/rainbow-me/platfomt-tools/pkg/interceptors"
+	"github.com/rainbow-me/platfomt-tools/grpc/interceptors"
 )
 
 // NewServerWithCustomInterceptorChain creates a production-ready gRPC server with a custom

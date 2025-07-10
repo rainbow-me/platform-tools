@@ -1,4 +1,4 @@
-package headers
+package metadata
 
 // Request Identification Headers
 const (

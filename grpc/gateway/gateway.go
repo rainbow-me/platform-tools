@@ -14,7 +14,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/rainbow-me/platfomt-tools/pkg/headers"
+	internalmetadata "github.com/rainbow-me/platfomt-tools/grpc/metadata"
 )
 
 const (
@@ -70,7 +70,7 @@ func WithGatewayOptions(opt ...runtime.ServeMuxOption) Option {
 }
 
 // WithHeaderConfig configures which headers to extract and forward
-func WithHeaderConfig(config headers.HeaderConfig) Option {
+func WithHeaderConfig(config internalmetadata.HeaderConfig) Option {
 	return func(g *gateway) {
 		g.headerConfig = config
 	}
@@ -111,7 +111,7 @@ type gateway struct {
 	endpoints         map[string][]registerFunc
 	mux               *http.ServeMux
 	gatewayMuxOptions []runtime.ServeMuxOption
-	headerConfig      headers.HeaderConfig
+	headerConfig      internalmetadata.HeaderConfig
 	logger            *slog.Logger
 	timeout           time.Duration
 }
@@ -128,8 +128,8 @@ func NewGateway(options ...Option) (*http.ServeMux, error) {
 		},
 		mux:     http.NewServeMux(),
 		timeout: DefaultTimeout,
-		headerConfig: headers.HeaderConfig{
-			HeadersToForward: headers.GetHeadersToForward(),
+		headerConfig: internalmetadata.HeaderConfig{
+			HeadersToForward: internalmetadata.GetHeadersToForward(),
 		},
 		logger: slog.Default(),
 	}

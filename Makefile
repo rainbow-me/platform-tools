@@ -34,14 +34,15 @@ clean: info
 	@ go mod tidy
 
 
-.PHONY: tidy
-tidy:
-	@go mod tidy
-	@bash -c 'if [[ -n $$(git ls-files --other --exclude-standard --directory -- go.sum) ]]; then\
-    	echo "go.sum was added by go mod tidy";\
-    	exit 1;\
-	fi'
-	@git diff --exit-code -- go.sum go.mod
+.PHONY: tidy tidy-common tidy-grpc
+tidy: tidy-common tidy-grpc
+tidy-common:
+	@echo "Running go mod tidy in common/"
+	@(cd common && go mod tidy && git diff --exit-code -- go.mod go.sum)
+
+tidy-grpc:
+	@echo "Running go mod tidy in grpc/"
+	@(cd grpc && go mod tidy && git diff --exit-code -- go.mod go.sum)
 
 .PHONY: validation_deps
 validation_deps: info clean
@@ -77,11 +78,17 @@ install: info clean
 	@echo "--- Installing project dependencies..."
 	@GOPRIVATE=github.com/rainbow-me go get ./...
 
- .PHONY: lint
- lint: info clean validation_deps
-	@ printf "\nLint App\n"
-	@gofumpt -l -w .
-	@golangci-lint run --timeout=3m --config=.golangci.yaml ./...
+# lint app
+.PHONY: lint
+lint: lint-common lint-grpc
+
+lint-common:
+	@echo "Linting common/"
+	@(cd common && golangci-lint run --timeout=3m --config=../.golangci.yaml ./...)
+
+lint-grpc:
+	@echo "Linting grpc/"
+	@(cd grpc && golangci-lint run --timeout=3m --config=../.golangci.yaml ./...)
 
 
 .PHONY: fmt
