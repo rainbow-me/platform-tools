@@ -1,0 +1,38 @@
+description: 'Set up Go with dependency caching and private repo support'
+inputs:
+  working-directory:
+    description: 'Path to directory with Go project'
+    required: true
+  personal-access-token:
+    description: 'Personal access token for private repos'
+    required: true
+  cache-key:
+    description: 'A unique key to keep caches for different actions'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: ${{ inputs.working-directory }}/go.mod
+        cache: false
+
+    - name: Go cache
+      id: cache-go
+      uses: actions/cache@v4
+      env:
+        cache-name: cache-go
+      with:
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+        key: ${{ runner.os }}-gocache-${{ inputs.cache-key }}-${{ inputs.working-directory }}-${{ hashFiles(format('{0}/go.sum', inputs.working-directory)) }}
+        restore-keys: |
+          ${{ runner.os }}-gocache-${{ inputs.cache-key }}-${{ inputs.working-directory }}
+
+    - name: Private repo support
+      shell: bash
+      run: |
+        git config --global url.https://${{ inputs.personal-access-token }}@github.com/.insteadOf https://github.com/
