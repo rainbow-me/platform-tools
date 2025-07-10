@@ -1,11 +1,16 @@
 description: 'Set up Go with dependency caching and private repo support'
 inputs:
-  working-directory:
-    description: 'Path to directory with Go project'
-    required: true
+  go-version-file:
+    description: 'Path to go.mod file for version detection'
+    required: false
+    default: 'go.mod'
   personal-access-token:
     description: 'Personal access token for private repos'
     required: true
+  cache-dependency-path:
+    description: 'Path to go.sum file for cache key'
+    required: false
+    default: 'go.sum'
   cache-key:
     description: 'A unique key to keep caches for different actions'
     required: true
@@ -16,7 +21,7 @@ runs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version-file: ${{ inputs.working-directory }}/go.mod
+        go-version-file: ${{ inputs.go-version-file }}
         cache: false
 
     - name: Go cache
@@ -28,9 +33,9 @@ runs:
         path: |
           ~/go/pkg/mod
           ~/.cache/go-build
-        key: ${{ runner.os }}-gocache-${{ inputs.cache-key }}-${{ inputs.working-directory }}-${{ hashFiles(format('{0}/go.sum', inputs.working-directory)) }}
+        key: ${{ runner.os }}-gocache-${{ inputs.cache-key }}-${{ hashFiles(inputs.cache-dependency-path) }}
         restore-keys: |
-          ${{ runner.os }}-gocache-${{ inputs.cache-key }}-${{ inputs.working-directory }}
+          ${{ runner.os }}-gocache--${{ inputs.cache-key }}
 
     - name: Private repo support
       shell: bash
