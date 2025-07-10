@@ -12,7 +12,7 @@ on:
       - .github/**
 
 jobs:
-  external-ci:
+  platfrom-ci:
     uses: ./.github/workflows/lint.yml
     secrets: inherit
     with:
