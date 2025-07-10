@@ -1,0 +1,66 @@
+name: CI
+env:
+  go-version: "1.23"
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Go environment
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.go-version }}
+          check-latest: true
+
+      - name: Install tools
+        run: |
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.5
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Run Linters
+        run: make lint
+
+      - name: Run Tests
+        run: make test
+
+      - name: Install gocover-cobertura
+        run: |
+          go get github.com/boumenot/gocover-cobertura && go install github.com/boumenot/gocover-cobertura
+
+      - name: Convert go coverage to corbetura format
+        run: gocover-cobertura < coverage.out > coverage.xml
+
+      - name: Generate code coverage report
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: coverage.xml
+          badge: true
+          fail_below_min: false
+          format: markdown
+          hide_branch_rate: false
+          hide_complexity: true
+          indicators: true
+          output: both
+          thresholds: '0 80'
+
+      - name: Add Coverage PR Comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: github.event_name == 'pull_request'
+        with:
+          recreate: true
+          path: code-coverage-results.md
+          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+      - name: Check for Vulnerabilities
+        run: make govulncheck
+
+      - name: Build Application
+        run: make build
