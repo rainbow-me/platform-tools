@@ -46,15 +46,13 @@ info:
 clean: info tidy
 
 
-.PHONY: tidy tidy-common tidy-grpc
-tidy: tidy-common tidy-grpc
-tidy-common:
-	@echo "Running go mod tidy in common/"
-	@(cd common && go mod tidy && git diff --exit-code -- go.mod go.sum)
-
-tidy-grpc:
-	@echo "Running go mod tidy in grpc/"
-	@(cd grpc && go mod tidy && git diff --exit-code -- go.mod go.sum)
+.PHONY: tidy
+tidy:
+	@echo "Running go mod tidy in all modules..."
+	@for mod in $(MODULES); do \
+		echo "Tidying $$mod/"; \
+		(cd $$mod && go mod tidy && git diff --exit-code -- go.mod go.sum) || exit 1; \
+	done
 
 .PHONY: validation_deps
 validation_deps: info clean
@@ -76,15 +74,12 @@ install: info clean
 
 # lint app
 .PHONY: lint
-lint: lint-common lint-grpc
-
-lint-common:
-	@echo "Linting common/"
-	@(cd common && golangci-lint run --timeout=3m --config=../.golangci.yaml ./...)
-
-lint-grpc:
-	@echo "Linting grpc/"
-	@(cd grpc && golangci-lint run --timeout=3m --config=../.golangci.yaml ./...)
+lint:
+	@echo "Running golangci-lint on all modules..."
+	@for mod in $(MODULES); do \
+		echo "Linting $$mod/"; \
+		(cd $$mod && golangci-lint run --timeout=3m --config=../.golangci.yaml ./...) || exit 1; \
+	done
 
 
 .PHONY: fmt
