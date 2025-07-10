@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 
-	"github.com/rainbow-me/go-utils-lib/pkg/platform/env"
+	"github.com/rainbow-me/platfomt-tools/pkg/env"
 )
 
 const (

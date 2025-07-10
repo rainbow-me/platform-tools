@@ -10,7 +10,6 @@ require (
 	github.com/mennanov/fmutils v0.3.3
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/rainbow-me/go-utils-lib v1.359.0
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/atomic v1.11.0 // indirect
