@@ -70,7 +70,7 @@ func NewServerWithCustomInterceptorChain(
 		chainedUnaryInterceptor =
 			func(ctx context.Context,
 				req interface{},
-				info *grpc.UnaryServerInfo,
+				_ *grpc.UnaryServerInfo,
 				handler grpc.UnaryHandler,
 			) (interface{}, error) {
 				return handler(ctx, req)
