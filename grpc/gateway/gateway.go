@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -12,6 +13,8 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 
@@ -106,6 +109,14 @@ func WithRequestLogging() Option {
 	}
 }
 
+// WithHealthCheck enables the /health endpoint using the provided gRPC health server.
+func WithHealthCheck(healthServer *health.Server, endpoint string) Option {
+	return func(g *Gateway) {
+		g.HealthServer = healthServer
+		g.HealthEndpoint = endpoint
+	}
+}
+
 type Gateway struct {
 	ServerAddress        string
 	ServerDialOptions    []grpc.DialOption
@@ -116,6 +127,8 @@ type Gateway struct {
 	Logger               *zap.Logger
 	Timeout              time.Duration
 	EnableRequestLogging bool
+	HealthServer         *health.Server
+	HealthEndpoint       string
 }
 
 // NewGateway creates a gRPC REST Gateway with HTTP handlers that have been
@@ -200,7 +213,36 @@ func (g *Gateway) RegisterEndpoints() (*http.ServeMux, error) {
 		)
 	}
 
+	// Register health check if enabled
+	if g.HealthServer != nil && g.HealthEndpoint != "" {
+		g.Mux.HandleFunc(g.HealthEndpoint, g.HealthHandler())
+		g.Logger.Info("Registered health check endpoint", zap.String("path", g.HealthEndpoint))
+	}
+
 	return g.Mux, nil
+}
+
+// HealthHandler returns an HTTP handler for health checks
+func (g *Gateway) HealthHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		service := r.URL.Query().Get("service")
+
+		resp, err := g.HealthServer.Check(r.Context(), &grpc_health_v1.HealthCheckRequest{
+			Service: service,
+		})
+		if err != nil {
+			g.Logger.Error("Health check failed", zap.Error(err), zap.String("service", service))
+			http.Error(w, err.Error(), http.StatusServiceUnavailable)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err = json.NewEncoder(w).Encode(map[string]string{
+			"status": resp.GetStatus().String(),
+		}); err != nil {
+			g.Logger.Error("Failed to encode health response", zap.Error(err))
+		}
+	}
 }
 
 // WrapHandler adds middleware for logging
