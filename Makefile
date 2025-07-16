@@ -13,7 +13,7 @@ DOCKER_TAG="rainbow/$(PROJECT):$(VERSION)"
 # This ensures that you have the necessary executables installed to run this makefile.
 #
 BUILD_PREREQUISITES = git go
-VALIDATION_PREREQUISITES = golangci-lint gci
+VALIDATION_PREREQUISITES = golangci-lint gci buf protoc-gen-go protoc-gen-go-grp
 
 # modules
 MODULES := common grpc
@@ -130,3 +130,20 @@ govulncheck:
 		echo "Checking module: $$mod"; \
 		(cd $$mod && govulncheck ./...); \
 	done
+
+
+.PHONY: proto_lint
+proto_lint: info clean
+	@ printf "\nLint Protos\n"
+	@ cd grpc && buf lint
+
+
+.PHONY: gen_deps
+gen_deps: info
+	@ printf "\nDeps protos\n"
+	@ cd grpc/protos/v1 && buf dep update
+
+
+.PHONY: gen
+gen: info
+	@ cd grpc/protos && pwd && buf generate v1 --template v1/buf.gen.yaml

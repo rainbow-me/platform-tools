@@ -2,7 +2,6 @@ version: v1
 name: buf.build/rainbow/platform-tools-grpc
 deps:
   - buf.build/googleapis/googleapis
-  - buf.build/grpc-ecosystem/grpc-gateway
 breaking:
   use:
     - PACKAGE

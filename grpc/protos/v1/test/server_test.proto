@@ -1,6 +1,6 @@
 syntax = "proto3";
 package test;
-option go_package = "github.com/rainbow-me/platform-tools/grpc/protos/test";
+option go_package = "github.com/rainbow-me/platform-tools/grpc/protos/v1/test";
 
 import "google/api/annotations.proto";  // Add this import for google.api.http
 
