@@ -1,0 +1,21 @@
+syntax = "proto3";
+package test;
+option go_package = "github.com/rainbow-me/platform-tools/grpc/protos/test";
+
+import "google/api/annotations.proto";  // Add this import for google.api.http
+
+message SayHelloRequest {
+  string name = 1;
+}
+
+message SayHelloResponse {
+  string greeting = 1;
+  string last_name = 2;
+  string first_name = 3;
+}
+
+service HelloService {
+  rpc SayHello (SayHelloRequest) returns (SayHelloResponse) {
+    option (google.api.http) = {post: "/hello",  body: "*"};
+  }
+}

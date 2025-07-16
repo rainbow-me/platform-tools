@@ -1,4 +1,4 @@
-module github.com/rainbow-me/platfomt-tools/grpc
+module github.com/rainbow-me/platform-tools/grpc
 
 go 1.23.10
 

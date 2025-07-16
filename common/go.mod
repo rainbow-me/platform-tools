@@ -1,4 +1,4 @@
-module github.com/rainbow-me/platfomt-tools/common
+module github.com/rainbow-me/platform-tools/common
 
 go 1.23.10
 

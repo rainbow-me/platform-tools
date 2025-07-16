@@ -7,7 +7,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	"github.com/rainbow-me/platfomt-tools/common/env"
+	"github.com/rainbow-me/platform-tools/common/env"
 )
 
 const (

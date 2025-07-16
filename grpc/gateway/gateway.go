@@ -14,7 +14,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 
-	internalmetadata "github.com/rainbow-me/platfomt-tools/grpc/metadata"
+	internalmetadata "github.com/rainbow-me/platform-tools/grpc/metadata"
 )
 
 const (

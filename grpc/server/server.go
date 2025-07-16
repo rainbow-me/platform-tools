@@ -7,7 +7,7 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
-	"github.com/rainbow-me/platfomt-tools/grpc/interceptors"
+	"github.com/rainbow-me/platform-tools/grpc/interceptors"
 )
 
 // NewServerWithCustomInterceptorChain creates a production-ready gRPC server with a custom

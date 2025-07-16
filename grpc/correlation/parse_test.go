@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/rainbow-me/platfomt-tools/grpc/correlation"
+	"github.com/rainbow-me/platform-tools/grpc/correlation"
 )
 
 func TestGenerate(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/rainbow-me/platfomt-tools/grpc/metadata"
+	"github.com/rainbow-me/platform-tools/grpc/metadata"
 )
 
 // Define a custom type for context keys to avoid collisions

@@ -19,8 +19,8 @@ import (
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 
-	"github.com/rainbow-me/platfomt-tools/grpc/correlation"
-	internalmetadata "github.com/rainbow-me/platfomt-tools/grpc/metadata"
+	"github.com/rainbow-me/platform-tools/grpc/correlation"
+	internalmetadata "github.com/rainbow-me/platform-tools/grpc/metadata"
 )
 
 // Structured logging field keys

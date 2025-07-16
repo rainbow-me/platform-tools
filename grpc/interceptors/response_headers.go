@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 
-	internalmetadata "github.com/rainbow-me/platfomt-tools/grpc/metadata"
+	internalmetadata "github.com/rainbow-me/platform-tools/grpc/metadata"
 )
 
 // ResponseHeadersInterceptor adds trace and request ID headers to gRPC responses
