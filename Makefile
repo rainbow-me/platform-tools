@@ -102,7 +102,7 @@ unit:
 	@echo "🏎️ Running tests with race detector..."
 	@for mod in $(MODULES); do \
 		echo "▶ Running tests in $$mod (with race detector)"; \
-		( cd $$mod && CGO_ENABLED=1 GOFLAGS="-ldflags=-extldflags=-Wl,-ld_classic" gotestsum --format testname -- -race ./... ); \
+		( cd $$mod && CGO_ENABLED=1 gotestsum --format testname -- -race ./... ); \
 	done
 
 test-setup:
