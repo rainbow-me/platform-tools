@@ -8,50 +8,50 @@ import (
 // Chain is a generic ordered chain that supports a variety of interactions to modify the internal state.
 // None of the operations are concurrency-safe and may panic of the wrong types are passed.
 type Chain struct {
-	itemOrder []string
+	ItemOrder []string
 }
 
 // UnaryServerInterceptorChain builds and requires grpc.UnaryServerInterceptor's
 type UnaryServerInterceptorChain struct {
 	Chain
-	items map[string]grpc.UnaryServerInterceptor
+	Items map[string]grpc.UnaryServerInterceptor
 }
 
 // StreamServerInterceptorChain builds and requires grpc.StreamServerInterceptor's
 type StreamServerInterceptorChain struct {
 	Chain
-	items map[string]grpc.StreamServerInterceptor
+	Items map[string]grpc.StreamServerInterceptor
 }
 
 // UnaryClientInterceptorChain builds and requires grpc.UnaryClientInterceptor's
 type UnaryClientInterceptorChain struct {
 	Chain
-	items map[string]grpc.UnaryClientInterceptor
+	Items map[string]grpc.UnaryClientInterceptor
 }
 
 // StreamClientInterceptorChain builds and requires grpc.StreamClientInterceptor's
 type StreamClientInterceptorChain struct {
 	Chain
-	items map[string]grpc.StreamClientInterceptor
+	Items map[string]grpc.StreamClientInterceptor
 }
 
 func (c *UnaryServerInterceptorChain) Exists(id string) bool {
-	_, ok := c.items[id]
+	_, ok := c.Items[id]
 	return ok
 }
 
 func (c *StreamServerInterceptorChain) Exists(id string) bool {
-	_, ok := c.items[id]
+	_, ok := c.Items[id]
 	return ok
 }
 
 func (c *UnaryClientInterceptorChain) Exists(id string) bool {
-	_, ok := c.items[id]
+	_, ok := c.Items[id]
 	return ok
 }
 
 func (c *StreamClientInterceptorChain) Exists(id string) bool {
-	_, ok := c.items[id]
+	_, ok := c.Items[id]
 	return ok
 }
 
@@ -62,12 +62,12 @@ func (c *StreamClientInterceptorChain) Exists(id string) bool {
 //	Before: a
 //	After: a -> b
 func (c *UnaryServerInterceptorChain) Push(id string, inter grpc.UnaryServerInterceptor) bool {
-	if _, ok := c.items[id]; ok {
+	if _, ok := c.Items[id]; ok {
 		return false
 	}
 
-	c.items[id] = inter
-	c.itemOrder = append(c.itemOrder, id)
+	c.Items[id] = inter
+	c.ItemOrder = append(c.ItemOrder, id)
 
 	return true
 }
@@ -79,12 +79,12 @@ func (c *UnaryServerInterceptorChain) Push(id string, inter grpc.UnaryServerInte
 //	Before: a
 //	After: a -> b
 func (c *StreamServerInterceptorChain) Push(id string, inter grpc.StreamServerInterceptor) bool {
-	if _, ok := c.items[id]; ok {
+	if _, ok := c.Items[id]; ok {
 		return false
 	}
 
-	c.items[id] = inter
-	c.itemOrder = append(c.itemOrder, id)
+	c.Items[id] = inter
+	c.ItemOrder = append(c.ItemOrder, id)
 
 	return true
 }
@@ -96,12 +96,12 @@ func (c *StreamServerInterceptorChain) Push(id string, inter grpc.StreamServerIn
 //	Before: a
 //	After: a -> b
 func (c *UnaryClientInterceptorChain) Push(id string, inter grpc.UnaryClientInterceptor) bool {
-	if _, ok := c.items[id]; ok {
+	if _, ok := c.Items[id]; ok {
 		return false
 	}
 
-	c.items[id] = inter
-	c.itemOrder = append(c.itemOrder, id)
+	c.Items[id] = inter
+	c.ItemOrder = append(c.ItemOrder, id)
 
 	return true
 }
@@ -113,12 +113,12 @@ func (c *UnaryClientInterceptorChain) Push(id string, inter grpc.UnaryClientInte
 //	Before: a
 //	After: a -> b
 func (c *StreamClientInterceptorChain) Push(id string, inter grpc.StreamClientInterceptor) bool {
-	if _, ok := c.items[id]; ok {
+	if _, ok := c.Items[id]; ok {
 		return false
 	}
 
-	c.items[id] = inter
-	c.itemOrder = append(c.itemOrder, id)
+	c.Items[id] = inter
+	c.ItemOrder = append(c.ItemOrder, id)
 
 	return true
 }
@@ -130,25 +130,25 @@ func (c *StreamClientInterceptorChain) Push(id string, inter grpc.StreamClientIn
 //	Before: a -> b
 //	After: a -> c -> b
 func (c *UnaryServerInterceptorChain) InsertAfter(afterID string, id string, inter grpc.UnaryServerInterceptor) bool {
-	if _, ok := c.items[id]; ok {
+	if _, ok := c.Items[id]; ok {
 		return false
 	}
 
-	if _, ok := c.items[afterID]; !ok {
+	if _, ok := c.Items[afterID]; !ok {
 		return false
 	}
 
 	var index int
-	for i := range c.itemOrder {
-		if c.itemOrder[i] == afterID {
+	for i := range c.ItemOrder {
+		if c.ItemOrder[i] == afterID {
 			index = i
 			break
 		}
 	}
 
-	c.itemOrder = append(c.itemOrder[:index+1],
-		append([]string{id}, c.itemOrder[index+1:]...)...)
-	c.items[id] = inter
+	c.ItemOrder = append(c.ItemOrder[:index+1],
+		append([]string{id}, c.ItemOrder[index+1:]...)...)
+	c.Items[id] = inter
 
 	return true
 }
@@ -160,25 +160,25 @@ func (c *UnaryServerInterceptorChain) InsertAfter(afterID string, id string, int
 //	Before: a -> b
 //	After: a -> c -> b
 func (c *StreamServerInterceptorChain) InsertAfter(afterID string, id string, inter grpc.StreamServerInterceptor) bool {
-	if _, ok := c.items[id]; ok {
+	if _, ok := c.Items[id]; ok {
 		return false
 	}
 
-	if _, ok := c.items[afterID]; !ok {
+	if _, ok := c.Items[afterID]; !ok {
 		return false
 	}
 
 	var index int
-	for i := range c.itemOrder {
-		if c.itemOrder[i] == afterID {
+	for i := range c.ItemOrder {
+		if c.ItemOrder[i] == afterID {
 			index = i
 			break
 		}
 	}
 
-	c.itemOrder = append(c.itemOrder[:index+1],
-		append([]string{id}, c.itemOrder[index+1:]...)...)
-	c.items[id] = inter
+	c.ItemOrder = append(c.ItemOrder[:index+1],
+		append([]string{id}, c.ItemOrder[index+1:]...)...)
+	c.Items[id] = inter
 
 	return true
 }
@@ -190,25 +190,25 @@ func (c *StreamServerInterceptorChain) InsertAfter(afterID string, id string, in
 //	Before: a -> b
 //	After: a -> c -> b
 func (c *UnaryClientInterceptorChain) InsertAfter(afterID string, id string, inter grpc.UnaryClientInterceptor) bool {
-	if _, ok := c.items[id]; ok {
+	if _, ok := c.Items[id]; ok {
 		return false
 	}
 
-	if _, ok := c.items[afterID]; !ok {
+	if _, ok := c.Items[afterID]; !ok {
 		return false
 	}
 
 	var index int
-	for i := range c.itemOrder {
-		if c.itemOrder[i] == afterID {
+	for i := range c.ItemOrder {
+		if c.ItemOrder[i] == afterID {
 			index = i
 			break
 		}
 	}
 
-	c.itemOrder = append(c.itemOrder[:index+1],
-		append([]string{id}, c.itemOrder[index+1:]...)...)
-	c.items[id] = inter
+	c.ItemOrder = append(c.ItemOrder[:index+1],
+		append([]string{id}, c.ItemOrder[index+1:]...)...)
+	c.Items[id] = inter
 
 	return true
 }
@@ -220,25 +220,25 @@ func (c *UnaryClientInterceptorChain) InsertAfter(afterID string, id string, int
 //	Before: a -> b
 //	After: a -> c -> b
 func (c *StreamClientInterceptorChain) InsertAfter(afterID string, id string, inter grpc.StreamClientInterceptor) bool {
-	if _, ok := c.items[id]; ok {
+	if _, ok := c.Items[id]; ok {
 		return false
 	}
 
-	if _, ok := c.items[afterID]; !ok {
+	if _, ok := c.Items[afterID]; !ok {
 		return false
 	}
 
 	var index int
-	for i := range c.itemOrder {
-		if c.itemOrder[i] == afterID {
+	for i := range c.ItemOrder {
+		if c.ItemOrder[i] == afterID {
 			index = i
 			break
 		}
 	}
 
-	c.itemOrder = append(c.itemOrder[:index+1],
-		append([]string{id}, c.itemOrder[index+1:]...)...)
-	c.items[id] = inter
+	c.ItemOrder = append(c.ItemOrder[:index+1],
+		append([]string{id}, c.ItemOrder[index+1:]...)...)
+	c.Items[id] = inter
 
 	return true
 }
@@ -249,29 +249,29 @@ func (c *StreamClientInterceptorChain) InsertAfter(afterID string, id string, in
 //	Before: a -> b
 //	After: a -> c -> b
 func (c *UnaryServerInterceptorChain) InsertBefore(beforeID string, id string, inter grpc.UnaryServerInterceptor) bool {
-	if _, ok := c.items[id]; ok {
+	if _, ok := c.Items[id]; ok {
 		return false
 	}
 
-	if _, ok := c.items[beforeID]; !ok {
+	if _, ok := c.Items[beforeID]; !ok {
 		return false
 	}
 
 	var index int
-	for i := range c.itemOrder {
-		if c.itemOrder[i] == beforeID {
+	for i := range c.ItemOrder {
+		if c.ItemOrder[i] == beforeID {
 			index = i
 			break
 		}
 	}
 
 	if index-1 < 0 {
-		c.itemOrder = append([]string{id}, c.itemOrder...)
-		c.items[id] = inter
+		c.ItemOrder = append([]string{id}, c.ItemOrder...)
+		c.Items[id] = inter
 	} else {
-		c.itemOrder = append(c.itemOrder[:index-1],
-			append([]string{id}, c.itemOrder[index-1:]...)...)
-		c.items[id] = inter
+		c.ItemOrder = append(c.ItemOrder[:index-1],
+			append([]string{id}, c.ItemOrder[index-1:]...)...)
+		c.Items[id] = inter
 	}
 
 	return true
@@ -287,29 +287,29 @@ func (c *StreamServerInterceptorChain) InsertBefore(
 	id string,
 	inter grpc.StreamServerInterceptor,
 ) bool {
-	if _, ok := c.items[id]; ok {
+	if _, ok := c.Items[id]; ok {
 		return false
 	}
 
-	if _, ok := c.items[beforeID]; !ok {
+	if _, ok := c.Items[beforeID]; !ok {
 		return false
 	}
 
 	var index int
-	for i := range c.itemOrder {
-		if c.itemOrder[i] == beforeID {
+	for i := range c.ItemOrder {
+		if c.ItemOrder[i] == beforeID {
 			index = i
 			break
 		}
 	}
 
 	if index-1 < 0 {
-		c.itemOrder = append([]string{id}, c.itemOrder...)
-		c.items[id] = inter
+		c.ItemOrder = append([]string{id}, c.ItemOrder...)
+		c.Items[id] = inter
 	} else {
-		c.itemOrder = append(c.itemOrder[:index-1],
-			append([]string{id}, c.itemOrder[index-1:]...)...)
-		c.items[id] = inter
+		c.ItemOrder = append(c.ItemOrder[:index-1],
+			append([]string{id}, c.ItemOrder[index-1:]...)...)
+		c.Items[id] = inter
 	}
 
 	return true
@@ -321,29 +321,29 @@ func (c *StreamServerInterceptorChain) InsertBefore(
 //	Before: a -> b
 //	After: a -> c -> b
 func (c *UnaryClientInterceptorChain) InsertBefore(beforeID string, id string, inter grpc.UnaryClientInterceptor) bool {
-	if _, ok := c.items[id]; ok {
+	if _, ok := c.Items[id]; ok {
 		return false
 	}
 
-	if _, ok := c.items[beforeID]; !ok {
+	if _, ok := c.Items[beforeID]; !ok {
 		return false
 	}
 
 	var index int
-	for i := range c.itemOrder {
-		if c.itemOrder[i] == beforeID {
+	for i := range c.ItemOrder {
+		if c.ItemOrder[i] == beforeID {
 			index = i
 			break
 		}
 	}
 
 	if index-1 < 0 {
-		c.itemOrder = append([]string{id}, c.itemOrder...)
-		c.items[id] = inter
+		c.ItemOrder = append([]string{id}, c.ItemOrder...)
+		c.Items[id] = inter
 	} else {
-		c.itemOrder = append(c.itemOrder[:index-1],
-			append([]string{id}, c.itemOrder[index-1:]...)...)
-		c.items[id] = inter
+		c.ItemOrder = append(c.ItemOrder[:index-1],
+			append([]string{id}, c.ItemOrder[index-1:]...)...)
+		c.Items[id] = inter
 	}
 
 	return true
@@ -359,29 +359,29 @@ func (c *StreamClientInterceptorChain) InsertBefore(
 	id string,
 	inter grpc.StreamClientInterceptor,
 ) bool {
-	if _, ok := c.items[id]; ok {
+	if _, ok := c.Items[id]; ok {
 		return false
 	}
 
-	if _, ok := c.items[beforeID]; !ok {
+	if _, ok := c.Items[beforeID]; !ok {
 		return false
 	}
 
 	var index int
-	for i := range c.itemOrder {
-		if c.itemOrder[i] == beforeID {
+	for i := range c.ItemOrder {
+		if c.ItemOrder[i] == beforeID {
 			index = i
 			break
 		}
 	}
 
 	if index-1 < 0 {
-		c.itemOrder = append([]string{id}, c.itemOrder...)
-		c.items[id] = inter
+		c.ItemOrder = append([]string{id}, c.ItemOrder...)
+		c.Items[id] = inter
 	} else {
-		c.itemOrder = append(c.itemOrder[:index-1],
-			append([]string{id}, c.itemOrder[index-1:]...)...)
-		c.items[id] = inter
+		c.ItemOrder = append(c.ItemOrder[:index-1],
+			append([]string{id}, c.ItemOrder[index-1:]...)...)
+		c.Items[id] = inter
 	}
 
 	return true
@@ -393,20 +393,20 @@ func (c *StreamClientInterceptorChain) InsertBefore(
 //	Before: a -> b
 //	After: b
 func (c *UnaryServerInterceptorChain) Delete(id string) bool {
-	if _, ok := c.items[id]; !ok {
+	if _, ok := c.Items[id]; !ok {
 		return false
 	}
 
 	var index int
-	for i := range c.itemOrder {
-		if c.itemOrder[i] == id {
+	for i := range c.ItemOrder {
+		if c.ItemOrder[i] == id {
 			index = i
 			break
 		}
 	}
 
-	c.itemOrder = append(c.itemOrder[:index], c.itemOrder[index+1:]...)
-	delete(c.items, id)
+	c.ItemOrder = append(c.ItemOrder[:index], c.ItemOrder[index+1:]...)
+	delete(c.Items, id)
 
 	return true
 }
@@ -417,20 +417,20 @@ func (c *UnaryServerInterceptorChain) Delete(id string) bool {
 //	Before: a -> b
 //	After: b
 func (c *StreamServerInterceptorChain) Delete(id string) bool {
-	if _, ok := c.items[id]; !ok {
+	if _, ok := c.Items[id]; !ok {
 		return false
 	}
 
 	var index int
-	for i := range c.itemOrder {
-		if c.itemOrder[i] == id {
+	for i := range c.ItemOrder {
+		if c.ItemOrder[i] == id {
 			index = i
 			break
 		}
 	}
 
-	c.itemOrder = append(c.itemOrder[:index], c.itemOrder[index+1:]...)
-	delete(c.items, id)
+	c.ItemOrder = append(c.ItemOrder[:index], c.ItemOrder[index+1:]...)
+	delete(c.Items, id)
 
 	return true
 }
@@ -441,20 +441,20 @@ func (c *StreamServerInterceptorChain) Delete(id string) bool {
 //	Before: a -> b
 //	After: b
 func (c *UnaryClientInterceptorChain) Delete(id string) bool {
-	if _, ok := c.items[id]; !ok {
+	if _, ok := c.Items[id]; !ok {
 		return false
 	}
 
 	var index int
-	for i := range c.itemOrder {
-		if c.itemOrder[i] == id {
+	for i := range c.ItemOrder {
+		if c.ItemOrder[i] == id {
 			index = i
 			break
 		}
 	}
 
-	c.itemOrder = append(c.itemOrder[:index], c.itemOrder[index+1:]...)
-	delete(c.items, id)
+	c.ItemOrder = append(c.ItemOrder[:index], c.ItemOrder[index+1:]...)
+	delete(c.Items, id)
 
 	return true
 }
@@ -465,20 +465,20 @@ func (c *UnaryClientInterceptorChain) Delete(id string) bool {
 //	Before: a -> b
 //	After: b
 func (c *StreamClientInterceptorChain) Delete(id string) bool {
-	if _, ok := c.items[id]; !ok {
+	if _, ok := c.Items[id]; !ok {
 		return false
 	}
 
 	var index int
-	for i := range c.itemOrder {
-		if c.itemOrder[i] == id {
+	for i := range c.ItemOrder {
+		if c.ItemOrder[i] == id {
 			index = i
 			break
 		}
 	}
 
-	c.itemOrder = append(c.itemOrder[:index], c.itemOrder[index+1:]...)
-	delete(c.items, id)
+	c.ItemOrder = append(c.ItemOrder[:index], c.ItemOrder[index+1:]...)
+	delete(c.Items, id)
 
 	return true
 }
@@ -489,11 +489,11 @@ func (c *StreamClientInterceptorChain) Delete(id string) bool {
 //	Before: a -> b
 //	After: a (new interceptor) -> b
 func (c *UnaryServerInterceptorChain) Replace(id string, inter grpc.UnaryServerInterceptor) bool {
-	if _, ok := c.items[id]; !ok {
+	if _, ok := c.Items[id]; !ok {
 		return false
 	}
 
-	c.items[id] = inter
+	c.Items[id] = inter
 
 	return true
 }
@@ -504,11 +504,11 @@ func (c *UnaryServerInterceptorChain) Replace(id string, inter grpc.UnaryServerI
 //	Before: a -> b
 //	After: a (new interceptor) -> b
 func (c *StreamServerInterceptorChain) Replace(id string, inter grpc.StreamServerInterceptor) bool {
-	if _, ok := c.items[id]; !ok {
+	if _, ok := c.Items[id]; !ok {
 		return false
 	}
 
-	c.items[id] = inter
+	c.Items[id] = inter
 
 	return true
 }
@@ -519,11 +519,11 @@ func (c *StreamServerInterceptorChain) Replace(id string, inter grpc.StreamServe
 //	Before: a -> b
 //	After: a (new interceptor) -> b
 func (c *UnaryClientInterceptorChain) Replace(id string, inter grpc.UnaryClientInterceptor) bool {
-	if _, ok := c.items[id]; !ok {
+	if _, ok := c.Items[id]; !ok {
 		return false
 	}
 
-	c.items[id] = inter
+	c.Items[id] = inter
 
 	return true
 }
@@ -534,11 +534,11 @@ func (c *UnaryClientInterceptorChain) Replace(id string, inter grpc.UnaryClientI
 //	Before: a -> b
 //	After: a (new interceptor) -> b
 func (c *StreamClientInterceptorChain) Replace(id string, inter grpc.StreamClientInterceptor) bool {
-	if _, ok := c.items[id]; !ok {
+	if _, ok := c.Items[id]; !ok {
 		return false
 	}
 
-	c.items[id] = inter
+	c.Items[id] = inter
 
 	return true
 }
@@ -547,8 +547,8 @@ func (c *StreamClientInterceptorChain) Replace(id string, inter grpc.StreamClien
 func (c *UnaryServerInterceptorChain) Commit() grpc.UnaryServerInterceptor {
 	var interceptors []grpc.UnaryServerInterceptor
 
-	for _, id := range c.itemOrder {
-		interceptors = append(interceptors, c.items[id])
+	for _, id := range c.ItemOrder {
+		interceptors = append(interceptors, c.Items[id])
 	}
 
 	return grpcmiddleware.ChainUnaryServer(interceptors...)
@@ -558,8 +558,8 @@ func (c *UnaryServerInterceptorChain) Commit() grpc.UnaryServerInterceptor {
 func (c *StreamServerInterceptorChain) Commit() grpc.StreamServerInterceptor {
 	var interceptors []grpc.StreamServerInterceptor
 
-	for _, id := range c.itemOrder {
-		interceptors = append(interceptors, c.items[id])
+	for _, id := range c.ItemOrder {
+		interceptors = append(interceptors, c.Items[id])
 	}
 
 	return grpcmiddleware.ChainStreamServer(interceptors...)
@@ -569,8 +569,8 @@ func (c *StreamServerInterceptorChain) Commit() grpc.StreamServerInterceptor {
 func (c *UnaryClientInterceptorChain) Commit() grpc.UnaryClientInterceptor {
 	var interceptors []grpc.UnaryClientInterceptor
 
-	for _, id := range c.itemOrder {
-		interceptors = append(interceptors, c.items[id])
+	for _, id := range c.ItemOrder {
+		interceptors = append(interceptors, c.Items[id])
 	}
 
 	return grpcmiddleware.ChainUnaryClient(interceptors...)
@@ -580,8 +580,8 @@ func (c *UnaryClientInterceptorChain) Commit() grpc.UnaryClientInterceptor {
 func (c *StreamClientInterceptorChain) Commit() grpc.StreamClientInterceptor {
 	var interceptors []grpc.StreamClientInterceptor
 
-	for _, id := range c.itemOrder {
-		interceptors = append(interceptors, c.items[id])
+	for _, id := range c.ItemOrder {
+		interceptors = append(interceptors, c.Items[id])
 	}
 
 	return grpcmiddleware.ChainStreamClient(interceptors...)
@@ -590,27 +590,27 @@ func (c *StreamClientInterceptorChain) Commit() grpc.StreamClientInterceptor {
 // NewUnaryServerInterceptorChain constructs a new interceptor chain that can be modified.
 func NewUnaryServerInterceptorChain() *UnaryServerInterceptorChain {
 	return &UnaryServerInterceptorChain{
-		items: make(map[string]grpc.UnaryServerInterceptor),
+		Items: make(map[string]grpc.UnaryServerInterceptor),
 	}
 }
 
 // NewStreamServerInterceptorChain constructs a new interceptor chain that can be modified.
 func NewStreamServerInterceptorChain() *StreamServerInterceptorChain {
 	return &StreamServerInterceptorChain{
-		items: make(map[string]grpc.StreamServerInterceptor),
+		Items: make(map[string]grpc.StreamServerInterceptor),
 	}
 }
 
 // NewUnaryClientInterceptorChain constructs a new interceptor chain that can be modified.
 func NewUnaryClientInterceptorChain() *UnaryClientInterceptorChain {
 	return &UnaryClientInterceptorChain{
-		items: make(map[string]grpc.UnaryClientInterceptor),
+		Items: make(map[string]grpc.UnaryClientInterceptor),
 	}
 }
 
 // NewStreamClientInterceptorChain constructs a new interceptor chain that can be modified.
 func NewStreamClientInterceptorChain() *StreamClientInterceptorChain {
 	return &StreamClientInterceptorChain{
-		items: make(map[string]grpc.StreamClientInterceptor),
+		Items: make(map[string]grpc.StreamClientInterceptor),
 	}
 }
