@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 	"github.com/mennanov/fmutils"
 	"go.uber.org/zap"
@@ -17,7 +18,6 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
-	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 
 	"github.com/rainbow-me/platform-tools/grpc/correlation"
 	internalmetadata "github.com/rainbow-me/platform-tools/grpc/metadata"
@@ -113,7 +113,7 @@ func buildBaseLogFields(ctx context.Context, grpcService, grpcMethod string) []z
 	// Add trace information if available
 	if span, ok := tracer.SpanFromContext(ctx); ok {
 		fields = append(fields,
-			zap.String(traceIDKey, strconv.FormatUint(span.Context().TraceID(), 10)),
+			zap.String(traceIDKey, span.Context().TraceID()),
 			zap.String(spanIDKey, strconv.FormatUint(span.Context().SpanID(), 10)),
 		)
 	}

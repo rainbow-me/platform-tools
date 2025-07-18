@@ -4,9 +4,9 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
-	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 
 	internalmetadata "github.com/rainbow-me/platform-tools/grpc/metadata"
 )
@@ -41,7 +41,7 @@ func extractDataDogIDs(ctx context.Context) (string, string) {
 	}
 
 	spanContext := span.Context()
-	traceID := strconv.FormatUint(spanContext.TraceID(), 10)
+	traceID := spanContext.TraceID()
 	spanID := strconv.FormatUint(spanContext.SpanID(), 10)
 
 	return traceID, spanID

@@ -3,6 +3,7 @@ module github.com/rainbow-me/platform-tools/grpc
 go 1.23.10
 
 require (
+	github.com/DataDog/dd-trace-go/v2 v2.0.1
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
@@ -13,13 +14,12 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/zap v1.27.0
 	golang.org/x/text v0.24.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250115164207-1a7da9e5054f
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250409194420-de1ac958c67a // indirect
 	google.golang.org/grpc v1.70.0
 	google.golang.org/protobuf v1.36.6
 	gopkg.in/DataDog/dd-trace-go.v1 v1.74.2
 )
-
-require google.golang.org/genproto/googleapis/api v0.0.0-20250115164207-1a7da9e5054f
 
 require (
 	github.com/DataDog/appsec-internal-go v1.11.2 // indirect
@@ -34,7 +34,6 @@ require (
 	github.com/DataDog/datadog-go/v5 v5.6.0 // indirect
 	github.com/DataDog/dd-trace-go/contrib/google.golang.org/grpc/v2 v2.0.1 // indirect
 	github.com/DataDog/dd-trace-go/instrumentation/testutils/grpc/v2 v2.0.1 // indirect
-	github.com/DataDog/dd-trace-go/v2 v2.0.1 // indirect
 	github.com/DataDog/go-libddwaf/v3 v3.5.4 // indirect
 	github.com/DataDog/go-runtime-metrics-internal v0.0.4-0.20250319104955-81009b9bad14 // indirect
 	github.com/DataDog/go-sqllexer v0.1.3 // indirect

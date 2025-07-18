@@ -2,13 +2,12 @@ package metadata
 
 import (
 	"context"
-	"strconv"
 	"strings"
 	"time"
 
+	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"github.com/google/uuid"
 	"google.golang.org/grpc/metadata"
-	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
 
 // RequestInfo contains extracted information from gRPC metadata
@@ -154,7 +153,7 @@ func (p *Parser) extractRequestIDs(
 	// Extract trace ID from Datadog tracer if available
 	span, ok := tracer.SpanFromContext(ctx)
 	if ok {
-		info.TraceID = strconv.FormatUint(span.Context().TraceID(), 10)
+		info.TraceID = span.Context().TraceID()
 	}
 
 	return updatedCtx, requestIDGenerated
