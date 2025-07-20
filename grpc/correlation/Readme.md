@@ -105,13 +105,9 @@ import "gopkg.in/DataDog/dd-trace-go.v1/contrib/google.golang.org/grpc" // as gr
 
 grpcServer := grpc.NewServer(
   grpc.ChainUnaryInterceptor(
-      correlation.UnaryServerInterceptor(),
+      correlation.UnaryCorrelationServerInterceptor,
       grpctrace.UnaryServerInterceptor( /* options */),
-  ),
-  grpc.ChainStreamInterceptor(
-      correlation.StreamServerInterceptor(),
-      grpctrace.StreamServerInterceptor( /* options */),
-    ),
+  )
 )
 ```
 
@@ -123,14 +119,10 @@ Chain before Datadog's client interceptor:
 
 ```go
 conn, err := grpc.Dial("downstream:50051",
-grpc.WithUnaryInterceptor(grpc.ChainUnaryInterceptor(
-    correlation.UnaryClientInterceptor(),
-    grpctrace.UnaryClientInterceptor( /* options */),
-)),
-grpc.WithStreamInterceptor(grpc.ChainStreamInterceptor(
-    correlation.StreamClientInterceptor(),
-    grpctrace.StreamClientInterceptor( /* options */),
-)),
+  grpc.WithUnaryInterceptor(grpc.ChainUnaryInterceptor(
+      correlation.UnaryCorrelationClientInterceptor,
+      grpctrace.UnaryClientInterceptor( /* options */),
+  ))),
 )
 ```
 
