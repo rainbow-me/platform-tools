@@ -2,7 +2,8 @@ name: merged-to-master
 on:
   push:
     branches:
-      - init
+      - main
+      - "@mzhakun/init"
 
 jobs:
   platform-tools-cd:
