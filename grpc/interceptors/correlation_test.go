@@ -45,8 +45,7 @@ func dialer(listener *bufconn.Listener) func(context.Context, string) (net.Conn,
 }
 
 func TestCorrelationPropagationE2E(t *testing.T) {
-	// Start mock tracer
-	err := tracer.Start()
+	err := tracer.Start(tracer.WithAgentAddr("localhost:0"), tracer.WithLogger(nil)) // Invalid port to skip connections
 	require.NoError(t, err, "Failed to start tracer")
 	defer tracer.Stop()
 
@@ -86,12 +85,11 @@ func TestCorrelationPropagationE2E(t *testing.T) {
 			listener := bufconn.Listen(bufSize)
 			srv := grpc.NewServer(grpc.UnaryInterceptor(interceptors.UnaryCorrelationServerInterceptor))
 			pb.RegisterEchoServiceServer(srv, &echoServer{})
-
+			serverDone := make(chan error, 1)
 			go func() {
-				if err = srv.Serve(listener); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
-					t.Logf("Server exited with error: %v", err)
-				}
+				serverDone <- srv.Serve(listener)
 			}()
+
 			defer srv.Stop()
 
 			// Set up client with interceptor
@@ -132,6 +130,21 @@ func TestCorrelationPropagationE2E(t *testing.T) {
 				if gotID != wantID {
 					t.Errorf("Expected correlation ID '%s', got '%s'", wantID, gotID)
 				}
+			}
+
+			// Cleanup: Close client connection first, then gracefully stop server and wait for it to stop
+			if err = conn.Close(); err != nil {
+				t.Logf("Failed to close conn: %v", err)
+			}
+
+			srv.GracefulStop()
+			select {
+			case err = <-serverDone:
+				if err != nil && !errors.Is(err, grpc.ErrServerStopped) {
+					t.Errorf("Server stopped with error: %v", err)
+				}
+			case <-time.After(1 * time.Second):
+				t.Error("Timeout waiting for server to stop")
 			}
 		})
 	}
