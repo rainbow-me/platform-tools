@@ -3,12 +3,12 @@ module github.com/rainbow-me/platform-tools/grpc
 go 1.23.10
 
 require (
-	github.com/DataDog/dd-trace-go/contrib/google.golang.org/grpc/v2 v2.1.0 // indirect
-	github.com/DataDog/dd-trace-go/v2 v2.1.0
+	github.com/DataDog/dd-trace-go/contrib/google.golang.org/grpc/v2 v2.0.1
+	github.com/DataDog/dd-trace-go/v2 v2.0.1
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.1
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.0
 	github.com/mennanov/fmutils v0.3.3
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.10.0
@@ -16,12 +16,10 @@ require (
 	go.uber.org/zap v1.27.0
 	golang.org/x/text v0.27.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250519155744-55703ea1f237
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250715232539-7130f93afb79 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250519155744-55703ea1f237 // indirect
 	google.golang.org/grpc v1.73.0
 	google.golang.org/protobuf v1.36.6
 )
-
-require gopkg.in/DataDog/dd-trace-go.v1 v1.74.3
 
 require (
 	github.com/DataDog/appsec-internal-go v1.13.0 // indirect
@@ -34,8 +32,7 @@ require (
 	github.com/DataDog/datadog-agent/pkg/util/scrubber v0.68.1 // indirect
 	github.com/DataDog/datadog-agent/pkg/version v0.68.1 // indirect
 	github.com/DataDog/datadog-go/v5 v5.6.0 // indirect
-	github.com/DataDog/dd-trace-go/instrumentation/testutils/grpc/v2 v2.1.0 // indirect
-	github.com/DataDog/go-libddwaf/v4 v4.3.1 // indirect
+	github.com/DataDog/go-libddwaf/v3 v3.5.4 // indirect
 	github.com/DataDog/go-runtime-metrics-internal v0.0.4-0.20250603194815-7edb7c2ad56a // indirect
 	github.com/DataDog/go-sqllexer v0.1.6 // indirect
 	github.com/DataDog/go-tuf v1.1.0-0.5.2 // indirect
@@ -54,6 +51,7 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
+	github.com/google/pprof v0.0.0-20250403155104-27863c87afa6 // indirect
 	github.com/hashicorp/go-version v1.7.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/lufia/plan9stats v0.0.0-20250317134145-8bc96cf8fc35 // indirect
@@ -65,6 +63,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/puzpuzpuz/xsync/v3 v3.5.1 // indirect
+	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/secure-systems-lab/go-securesystemslib v0.9.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.25.6 // indirect
 	github.com/tinylib/msgp v1.3.0 // indirect
@@ -90,6 +89,7 @@ require (
 	golang.org/x/sys v0.34.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
+	google.golang.org/genproto v0.0.0-20240325203815-454cdb8f5daa // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
