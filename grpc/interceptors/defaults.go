@@ -89,7 +89,8 @@ func NewConfig(serviceName, environment string, opts ...ConfigOption) *Config {
 			LogEnabled(true),
 			LogLevel(zapcore.InfoLevel),
 			LogRequests(true),
-			LogResponses(false), // Default to false to avoid logging sensitive data
+			LogResponses(false),                         // Default to false to avoid logging sensitive data
+			WithSkippedLogsByMethods(healthCheckMethod), // Skip health check method by default
 		},
 	}
 
