@@ -6,6 +6,9 @@ import (
 
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/metadata"
+
+	internalmetadata "github.com/rainbow-me/platform-tools/grpc/metadata"
 )
 
 // Standard correlation keys
@@ -15,7 +18,7 @@ const (
 )
 
 // ContextCorrelationHeader HTTP/gRPC header name for correlation context
-const ContextCorrelationHeader = "correlation-context"
+const ContextCorrelationHeader = internalmetadata.HeaderXCorrelationID
 
 // correlationContextKey is a private type for context keys to avoid collisions
 type correlationContextKey struct{}
@@ -52,7 +55,6 @@ func Set(ctx context.Context, values map[string]string) context.Context {
 }
 
 // SetKey sets a single correlation key-value pair and returns a new context.
-// This function is thread-safe as it creates a new map.
 func SetKey(ctx context.Context, key, value string) context.Context {
 	if key == "" {
 		return ctx
@@ -240,4 +242,35 @@ func String(ctx context.Context) string {
 		pairs = append(pairs, k+"="+v)
 	}
 	return strings.Join(pairs, ",")
+}
+
+// Generate creates the correlation header string from the context.
+func Generate(ctx context.Context) string {
+	return String(ctx)
+}
+
+// ParseCorrelationHeader parses the correlation header string into a Data map.
+func ParseCorrelationHeader(headerVal string) Data {
+	pairs := strings.Split(headerVal, ",")
+	m := make(Data)
+	for _, pair := range pairs {
+		parts := strings.SplitN(pair, "=", 2)
+		if len(parts) == 2 {
+			k := strings.TrimSpace(parts[0])
+			v := strings.TrimSpace(parts[1])
+			if k != "" && v != "" {
+				m[k] = v
+			}
+		}
+	}
+	return m
+}
+
+// GetFirst returns the first value for a metadata key, or an empty string if not present.
+func GetFirst(md metadata.MD, key string) string {
+	val := md.Get(key)
+	if len(val) > 0 {
+		return val[0]
+	}
+	return ""
 }

@@ -236,8 +236,8 @@ func pruneFields(message proto.Message, mask *fieldmaskpb.FieldMask) proto.Messa
 }
 
 // GetServiceAndMethod extracts the service and method names from a full gRPC method path.
-// Input format: "/coinbase.rates.Rates/Spot"
-// Output: service="coinbase.rates.Rates", method="Spot"
+// Input format: "/rainbow.rates.Rates/Spot"
+// Output: service="rainbow.rates.Rates", method="Spot"
 func GetServiceAndMethod(fullMethod string) (string, string) {
 	// Use pre-compiled regex to extract service and method
 	methodParts := methodRegex.FindStringSubmatch(fullMethod)

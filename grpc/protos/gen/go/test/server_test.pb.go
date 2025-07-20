@@ -126,6 +126,102 @@ func (x *SayHelloResponse) GetFirstName() string {
 	return ""
 }
 
+type EchoRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EchoRequest) Reset() {
+	*x = EchoRequest{}
+	mi := &file_test_server_test_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EchoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EchoRequest) ProtoMessage() {}
+
+func (x *EchoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_test_server_test_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EchoRequest.ProtoReflect.Descriptor instead.
+func (*EchoRequest) Descriptor() ([]byte, []int) {
+	return file_test_server_test_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *EchoRequest) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type EchoResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	CorrelationId string                 `protobuf:"bytes,2,opt,name=correlation_id,json=correlationId,proto3" json:"correlation_id,omitempty"` // Added to return corr ID for verification
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EchoResponse) Reset() {
+	*x = EchoResponse{}
+	mi := &file_test_server_test_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EchoResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EchoResponse) ProtoMessage() {}
+
+func (x *EchoResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_test_server_test_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EchoResponse.ProtoReflect.Descriptor instead.
+func (*EchoResponse) Descriptor() ([]byte, []int) {
+	return file_test_server_test_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *EchoResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *EchoResponse) GetCorrelationId() string {
+	if x != nil {
+		return x.CorrelationId
+	}
+	return ""
+}
+
 var File_test_server_test_proto protoreflect.FileDescriptor
 
 const file_test_server_test_proto_rawDesc = "" +
@@ -137,9 +233,16 @@ const file_test_server_test_proto_rawDesc = "" +
 	"\bgreeting\x18\x01 \x01(\tR\bgreeting\x12\x1b\n" +
 	"\tlast_name\x18\x02 \x01(\tR\blastName\x12\x1d\n" +
 	"\n" +
-	"first_name\x18\x03 \x01(\tR\tfirstName2\\\n" +
+	"first_name\x18\x03 \x01(\tR\tfirstName\"'\n" +
+	"\vEchoRequest\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"O\n" +
+	"\fEchoResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\x12%\n" +
+	"\x0ecorrelation_id\x18\x02 \x01(\tR\rcorrelationId2\\\n" +
 	"\fHelloService\x12L\n" +
-	"\bSayHello\x12\x15.test.SayHelloRequest\x1a\x16.test.SayHelloResponse\"\x11\x82\xd3\xe4\x93\x02\v:\x01*\"\x06/helloB:Z8github.com/rainbow-me/platform-tools/grpc/protos/v1/testb\x06proto3"
+	"\bSayHello\x12\x15.test.SayHelloRequest\x1a\x16.test.SayHelloResponse\"\x11\x82\xd3\xe4\x93\x02\v:\x01*\"\x06/hello2<\n" +
+	"\vEchoService\x12-\n" +
+	"\x04Echo\x12\x11.test.EchoRequest\x1a\x12.test.EchoResponseB:Z8github.com/rainbow-me/platform-tools/grpc/protos/v1/testb\x06proto3"
 
 var (
 	file_test_server_test_proto_rawDescOnce sync.Once
@@ -153,16 +256,20 @@ func file_test_server_test_proto_rawDescGZIP() []byte {
 	return file_test_server_test_proto_rawDescData
 }
 
-var file_test_server_test_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_test_server_test_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_test_server_test_proto_goTypes = []any{
 	(*SayHelloRequest)(nil),  // 0: test.SayHelloRequest
 	(*SayHelloResponse)(nil), // 1: test.SayHelloResponse
+	(*EchoRequest)(nil),      // 2: test.EchoRequest
+	(*EchoResponse)(nil),     // 3: test.EchoResponse
 }
 var file_test_server_test_proto_depIdxs = []int32{
 	0, // 0: test.HelloService.SayHello:input_type -> test.SayHelloRequest
-	1, // 1: test.HelloService.SayHello:output_type -> test.SayHelloResponse
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
+	2, // 1: test.EchoService.Echo:input_type -> test.EchoRequest
+	1, // 2: test.HelloService.SayHello:output_type -> test.SayHelloResponse
+	3, // 3: test.EchoService.Echo:output_type -> test.EchoResponse
+	2, // [2:4] is the sub-list for method output_type
+	0, // [0:2] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -179,9 +286,9 @@ func file_test_server_test_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_test_server_test_proto_rawDesc), len(file_test_server_test_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   4,
 			NumExtensions: 0,
-			NumServices:   1,
+			NumServices:   2,
 		},
 		GoTypes:           file_test_server_test_proto_goTypes,
 		DependencyIndexes: file_test_server_test_proto_depIdxs,
