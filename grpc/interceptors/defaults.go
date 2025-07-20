@@ -140,7 +140,6 @@ func NewDefaultServerUnaryChain(
 		grpctrace.WithUntracedMethods(healthCheckMethod),
 	))
 
-	// Add core interceptors
 	chain.Push("request-context", RequestContextUnaryServerInterceptor())
 	chain.Push("headers", ResponseHeadersInterceptor())
 
@@ -156,6 +155,26 @@ func NewDefaultServerUnaryChain(
 
 	// Add context status interceptor
 	chain.Push("context-status", UnaryContextStatusInterceptor())
+
+	return chain
+}
+
+func NewDefaultClientUnaryChain(
+	serviceName string,
+	logger *zap.Logger,
+	loggerOpts ...LoggingInterceptorOption,
+) *UnaryClientInterceptorChain {
+	chain := NewUnaryClientInterceptorChain()
+	chain.Push("tracer", grpctrace.UnaryClientInterceptor(
+		grpctrace.WithServiceName(serviceName),
+		grpctrace.WithAnalytics(true),
+	))
+
+	// Added after trace so that a current span is active.
+	chain.Push("request-context", UnaryRequestContextClientInterceptor)
+	chain.Push("correlation-context", UnaryCorrelationClientInterceptor)
+	chain.Push("upstream-info", UnaryUpstreamInfoClientInterceptor(serviceName))
+	chain.Push("logger", UnaryLoggerClientInterceptor(logger, loggerOpts...))
 
 	return chain
 }

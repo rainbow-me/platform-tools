@@ -4,8 +4,9 @@ import (
 	"context"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 
-	"github.com/rainbow-me/platform-tools/grpc/metadata"
+	internalmetadata "github.com/rainbow-me/platform-tools/grpc/metadata"
 )
 
 // Define a custom type for context keys to avoid collisions
@@ -22,7 +23,7 @@ func RequestContextUnaryServerInterceptor() grpc.UnaryServerInterceptor {
 		_ *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (interface{}, error) {
-		parser := metadata.NewRequestParser(true, true)
+		parser := internalmetadata.NewRequestParser(true, true)
 		updatedCtx, requestInfo := parser.ParseMetadata(ctx)
 
 		// Add to context for handlers using custom context key type
@@ -36,7 +37,30 @@ func RequestContextUnaryServerInterceptor() grpc.UnaryServerInterceptor {
 }
 
 // GetRequestInfoFromContext extracts RequestInfo from context
-func GetRequestInfoFromContext(ctx context.Context) (*metadata.RequestInfo, bool) {
-	requestInfo, ok := ctx.Value(requestContextKey).(*metadata.RequestInfo)
+func GetRequestInfoFromContext(ctx context.Context) (*internalmetadata.RequestInfo, bool) {
+	requestInfo, ok := ctx.Value(requestContextKey).(*internalmetadata.RequestInfo)
 	return requestInfo, ok
+}
+
+func UnaryRequestContextClientInterceptor(
+	ctx context.Context,
+	method string,
+	req, reply interface{},
+	cc *grpc.ClientConn,
+	invoker grpc.UnaryInvoker,
+	opts ...grpc.CallOption,
+) error {
+	// Extract request ID from incoming metadata
+	requestID := "unknown"
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		if values := md.Get(internalmetadata.HeaderXRequestID); len(values) > 0 && values[0] != "" {
+			requestID = values[0]
+		}
+	}
+
+	// Add request ID to outgoing metadata
+	ctx = metadata.AppendToOutgoingContext(ctx, internalmetadata.HeaderXRequestID, requestID)
+
+	// Continue with the actual gRPC call using the updated context
+	return invoker(ctx, method, req, reply, cc, opts...)
 }

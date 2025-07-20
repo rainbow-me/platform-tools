@@ -33,6 +33,7 @@ const (
 	// Request context information
 	isNewTraceKey = "is_new_trace"
 	clientIDKey   = "client_id"
+	requestIDKey  = "request_id"
 	serviceKey    = "service"
 	methodKey     = "method"
 	grpcStatuKey  = "status"
@@ -203,6 +204,13 @@ func buildMetadataLogFields(ctx context.Context) []zapcore.Field {
 	// Check if this is a new trace (no incoming trace ID)
 	traceIDs := md.Get(tracer.DefaultTraceIDHeader)
 	fields = append(fields, zap.Bool(isNewTraceKey, len(traceIDs) == 0))
+
+	requestID := md.Get(internalmetadata.HeaderXRequestID)
+	if len(requestID) > 0 {
+		fields = append(fields, zap.String(requestIDKey, requestID[0]))
+	} else {
+		fields = append(fields, zap.String(requestIDKey, "unknown"))
+	}
 
 	return fields
 }
