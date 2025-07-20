@@ -3,9 +3,9 @@ package interceptors
 import (
 	"time"
 
-	grpctrace "github.com/DataDog/dd-trace-go/contrib/google.golang.org/grpc/v2"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	grpctrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/google.golang.org/grpc"
 )
 
 const (
@@ -134,7 +134,7 @@ func NewDefaultServerUnaryChain(
 
 	// Add tracing interceptor
 	chain.Push("trace", grpctrace.UnaryServerInterceptor(
-		grpctrace.WithService(cfg.ServiceName),
+		grpctrace.WithServiceName(cfg.ServiceName),
 		grpctrace.WithAnalytics(true),
 		grpctrace.WithMetadataTags(),
 		grpctrace.WithUntracedMethods(healthCheckMethod),
@@ -166,7 +166,7 @@ func NewDefaultClientUnaryChain(
 ) *UnaryClientInterceptorChain {
 	chain := NewUnaryClientInterceptorChain()
 	chain.Push("tracer", grpctrace.UnaryClientInterceptor(
-		grpctrace.WithService(serviceName),
+		grpctrace.WithServiceName(serviceName),
 		grpctrace.WithAnalytics(true),
 	))
 
