@@ -22,7 +22,7 @@ Key features:
 Initialize the Datadog tracer in your `main` function (required for baggage propagation):
 
 ```go
-import "gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
+import "github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 
 func main() {
 tracer.Start( /* options, e.g., tracer.WithEnv("prod") */)
