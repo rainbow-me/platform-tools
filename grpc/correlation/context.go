@@ -24,7 +24,7 @@ const ContextCorrelationHeader = internalmetadata.HeaderXCorrelationID
 type correlationContextKey struct{}
 
 // Key CorrelationKey is the context key for storing correlation data
-var Key = correlationContextKey{} //nolint:gochecknoglobals
+var Key = correlationContextKey{}
 
 // Data CorrelationData represents the correlation context data
 type Data map[string]string

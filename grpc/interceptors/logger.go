@@ -47,7 +47,7 @@ const (
 )
 
 // Pre-compile regex for performance - avoid recompiling on each request
-var methodRegex = regexp.MustCompile(`\/(.+)\/(.+)$`)
+var methodRegex = regexp.MustCompile(`/(.+)/(.+)$`)
 
 // logWithContext logs gRPC calls with comprehensive context information,
 // optionally including request and response payloads based on configuration.
