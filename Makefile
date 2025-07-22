@@ -2,7 +2,7 @@
 # These act as inputs to other makefile targets.
 #
 ORG := rainbow
-PROJECT := platfomt-tools
+PROJECT := platform-tools
 VERSION := $(shell git describe --tags --always 2>/dev/null || git rev-parse --short HEAD)
 BUILD := $(shell git rev-parse --short HEAD)
 DOCKER_TAG="rainbow/$(PROJECT):$(VERSION)"
