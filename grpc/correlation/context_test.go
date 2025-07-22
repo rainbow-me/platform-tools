@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/DataDog/dd-trace-go/v2/ddtrace/mocktracer"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/metadata"
@@ -16,9 +15,6 @@ import (
 )
 
 func TestSet(t *testing.T) {
-	mt := mocktracer.Start()
-	defer mt.Stop()
-
 	tests := []struct {
 		name        string
 		ctx         context.Context

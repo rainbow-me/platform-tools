@@ -2,6 +2,7 @@ package correlation
 
 import (
 	"context"
+	"maps"
 	"strings"
 
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
@@ -29,17 +30,24 @@ var Key = correlationContextKey{}
 // Data CorrelationData represents the correlation context data
 type Data map[string]string
 
-// Set adds correlation values to the context and returns a new context.
-// This function is thread-safe as it creates a new map.
+// Set adds correlation values to a context, returning a new context.
+// - Derives new context; doesn't modify input context or values map.
+// - Merges input values into a copy of existing context correlation data.
+// - Safe for concurrent calls on shared context; each call is independent.
+// - Requires external sync if input map is concurrently modified.
+// - Stored map is mutable; treat as read-only to avoid issues.
 func Set(ctx context.Context, values map[string]string) context.Context {
 	if len(values) == 0 {
 		return ctx
 	}
 
-	// Create a new map to avoid mutation issues
-	correlationMap := make(Data, len(values))
+	// Clone existing correlation data from context
+	// no need to check for nil, maps.Clone handles it, get returns empty map if nil
+	correlationMap := maps.Clone(Get(ctx))
+
+	// Update with non-empty key-value pairs from input
 	for k, v := range values {
-		if k != "" && v != "" { // Only store non-empty key-value pairs
+		if k != "" && v != "" {
 			correlationMap[k] = v
 		}
 	}
@@ -55,18 +63,18 @@ func Set(ctx context.Context, values map[string]string) context.Context {
 }
 
 // SetKey sets a single correlation key-value pair and returns a new context.
+// - Derives new context; doesn't modify input context.
+// - Merges the key-value into a copy of existing context correlation data.
+// - Safe for concurrent calls on shared context; each call is independent.
+// - Stored map is mutable; treat as read-only to avoid issues.
 func SetKey(ctx context.Context, key, value string) context.Context {
 	if key == "" {
 		return ctx
 	}
 
-	existing := Get(ctx)
-	newMap := make(Data, len(existing)+1)
-
-	// Copy existing values
-	for k, v := range existing {
-		newMap[k] = v
-	}
+	// Clone existing correlation data from context
+	// no need to check for nil, maps.Clone handles it, get returns empty map if nil
+	newMap := maps.Clone(Get(ctx))
 
 	// Set/update the new value
 	if value != "" {
@@ -116,6 +124,9 @@ func Has(ctx context.Context, key string) bool {
 }
 
 // Delete removes a correlation key from the context and returns a new context.
+// - Derives new context; doesn't modify input context.
+// - Safe for concurrent calls on shared context; each call is independent.
+// - Stored map is mutable; treat as read-only to avoid issues.
 func Delete(ctx context.Context, key string) context.Context {
 	if key == "" {
 		return ctx
@@ -126,29 +137,24 @@ func Delete(ctx context.Context, key string) context.Context {
 		return ctx // Key doesn't exist, no change needed
 	}
 
-	newMap := make(Data, len(existing))
-	for k, v := range existing {
-		if k != key {
-			newMap[k] = v
-		}
-	}
+	newMap := maps.Clone(existing)
+	delete(newMap, key)
 
 	return context.WithValue(ctx, Key, newMap)
 }
 
 // Merge combines correlation data from multiple contexts.
-// Later contexts override values from earlier ones.
+// - Later contexts override values from earlier ones.
+// - Derives new context; doesn't modify input context.
+// - Safe for concurrent calls on shared context; each call is independent.
+// - Stored map is mutable; treat as read-only to avoid issues.
 func Merge(ctx context.Context, otherContexts ...context.Context) context.Context {
 	if len(otherContexts) == 0 {
 		return ctx
 	}
 
-	merged := make(Data)
-
-	// Start with base context
-	for k, v := range Get(ctx) {
-		merged[k] = v
-	}
+	// Clone base context correlation data
+	merged := maps.Clone(Get(ctx))
 
 	// Merge other contexts
 	for _, otherCtx := range otherContexts {
