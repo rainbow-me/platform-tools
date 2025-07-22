@@ -26,7 +26,7 @@ import (
 // Structured logging field keys
 const (
 	// Request timing and identification
-	durationDDKey = "duration"
+	durationIDKey = "duration"
 	traceIDKey    = "trace_id"
 	spanIDKey     = "span_id"
 
@@ -143,7 +143,7 @@ func buildRequestLogFields(
 	}
 
 	// Always add execution duration
-	fields = append(fields, zap.Duration(durationDDKey, duration))
+	fields = append(fields, zap.Duration(durationIDKey, duration))
 
 	// Add response payload if logging is enabled and response is not nil
 	if (config.LogParams || config.LogResponses) && resp != nil && !reflect.ValueOf(resp).IsZero() {

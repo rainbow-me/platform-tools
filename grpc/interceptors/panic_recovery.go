@@ -1,9 +1,13 @@
 package interceptors
 
 import (
+	"context"
 	"fmt"
+	"runtime/debug"
 	"time"
 
+	"github.com/DataDog/dd-trace-go/v2/ddtrace/ext"
+	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	grpcrecovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -25,17 +29,62 @@ const (
 // This interceptor:
 // - Catches panics that occur during gRPC request processing
 // - Logs panic details with stack traces for debugging
+// - Marks tracing spans as errored if available
 // - Converts panics to gRPC Internal errors for client responses
 // - Provides fallback logging when structured logger is unavailable
 func UnaryPanicRecoveryServerInterceptor(logger *zap.Logger) grpc.UnaryServerInterceptor {
 	return grpcrecovery.UnaryServerInterceptor(
-		grpcrecovery.WithRecoveryHandler(func(panicValue interface{}) error {
+		grpcrecovery.WithRecoveryHandlerContext(func(ctx context.Context, panicValue interface{}) error {
 			// Extract panic information for logging
 			panicMessage := extractPanicMessage(panicValue)
 			panicType := extractPanicType(panicValue)
 
 			// Log the panic with structured information
 			logPanicWithFallback(panicMessage, panicType, logger)
+
+			// Mark the span as failed if tracing is available
+			span, ok := tracer.SpanFromContext(ctx)
+			if ok {
+				span.SetTag(ext.Error, true)
+				span.SetTag(ext.ErrorType, "panic")
+				span.SetTag(ext.ErrorMsg, codes.Internal.String())
+				span.SetTag(ext.ErrorStack, fmt.Sprintf("%+v", panicValue))
+			}
+
+			// Return sanitized error to client (don't expose internal panic details)
+			return status.Error(codes.Internal, "Internal server error occurred")
+		}),
+	)
+}
+
+// StreamPanicRecoveryServerInterceptor creates a gRPC stream server interceptor that recovers
+// from panics in gRPC handlers, logs them with structured information, and returns
+// appropriate gRPC error responses to clients.
+//
+// This interceptor:
+// - Catches panics that occur during gRPC request processing
+// - Logs panic details with stack traces for debugging
+// - Marks tracing spans as errored if available
+// - Converts panics to gRPC Internal errors for client responses
+// - Provides fallback logging when structured logger is unavailable
+func StreamPanicRecoveryServerInterceptor(logger *zap.Logger) grpc.StreamServerInterceptor {
+	return grpcrecovery.StreamServerInterceptor(
+		grpcrecovery.WithRecoveryHandlerContext(func(ctx context.Context, panicValue interface{}) error {
+			// Extract panic information for logging
+			panicMessage := extractPanicMessage(panicValue)
+			panicType := extractPanicType(panicValue)
+
+			// Log the panic with structured information
+			logPanicWithFallback(panicMessage, panicType, logger)
+
+			// Mark the span as failed if tracing is available
+			span, ok := tracer.SpanFromContext(ctx)
+			if ok {
+				span.SetTag(ext.Error, true)
+				span.SetTag(ext.ErrorType, "panic")
+				span.SetTag(ext.ErrorMsg, codes.Internal.String())
+				span.SetTag(ext.ErrorStack, fmt.Sprintf("%+v", panicValue))
+			}
 
 			// Return sanitized error to client (don't expose internal panic details)
 			return status.Error(codes.Internal, "Internal server error occurred")
@@ -44,7 +93,7 @@ func UnaryPanicRecoveryServerInterceptor(logger *zap.Logger) grpc.UnaryServerInt
 }
 
 // extractPanicMessage safely extracts a string representation of the panic value
-func extractPanicMessage(panicValue interface{}) string {
+func extractPanicMessage(panicValue any) string {
 	if panicValue == nil {
 		return "unknown panic (nil value)"
 	}
@@ -52,7 +101,7 @@ func extractPanicMessage(panicValue interface{}) string {
 }
 
 // extractPanicType safely extracts the type information of the panic value
-func extractPanicType(panicValue interface{}) string {
+func extractPanicType(panicValue any) string {
 	if panicValue == nil {
 		return "nil"
 	}
@@ -70,6 +119,14 @@ func logPanicWithFallback(panicMessage, panicType string, logger *zap.Logger) {
 			zap.String(PanicTypeKey, panicType),
 			zap.Time("recovery_time", time.Now()),
 			zap.Stack(StackTraceKey),
+		)
+	} else {
+		// Fallback to standard output
+		fmt.Printf("Recovered from panic at %s\nPanic value: %s\nPanic type: %s\nStack trace:\n%s\n",
+			time.Now().Format(time.RFC3339),
+			panicMessage,
+			panicType,
+			string(debug.Stack()),
 		)
 	}
 }
