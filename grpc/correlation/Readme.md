@@ -46,7 +46,7 @@ ctx = correlation.Set(ctx, map[string]string{"session_id": "abc", "device": "mob
 // Special helpers
 ctx = correlation.SetTenancy(ctx, "org1")
 ctx = correlation.SetID(ctx, uuid.NewString()) // Or auto-generated in interceptor if missing
-ctx = correlation.SetIdempotency(ctx, "idempotent_op_123")
+ctx = correlation.SetIdempotencyKey(ctx, "idempotent_op_123")
 ```
 
 #### Getting Data
@@ -57,7 +57,7 @@ Retrieve values or the entire map:
 userID := correlation.GetValue(ctx, "user_id")
 tenancy := correlation.Tenancy(ctx)
 corrID := correlation.ID(ctx)
-ik := correlation.Idempotency(ctx)
+ik := correlation.IdempotencyKey(ctx)
 
 allData := correlation.Get(ctx)
 hasUser := correlation.Has(ctx, "user_id")

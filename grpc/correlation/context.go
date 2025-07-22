@@ -14,9 +14,9 @@ import (
 
 // Standard correlation keys
 const (
-	TenancyKey     = "tenancy"
-	IDKey          = "correlation_id"
-	IdempotencyKey = "idempotency_key"
+	TenancyKey       = "tenancy"
+	IDKey            = "correlation_id"
+	IdempotencyKeyID = "idempotency_key"
 )
 
 // ContextCorrelationHeader HTTP/gRPC header name for correlation context
@@ -218,15 +218,15 @@ func SetID(ctx context.Context, correlationID string) context.Context {
 	return SetKey(ctx, IDKey, correlationID)
 }
 
-// Idempotency returns the idempotency key from the correlation context.
+// IdempotencyKey returns the idempotency key from the correlation context.
 // Returns empty string if not found.
-func Idempotency(ctx context.Context) string {
-	return GetValue(ctx, IdempotencyKey)
+func IdempotencyKey(ctx context.Context) string {
+	return GetValue(ctx, IdempotencyKeyID)
 }
 
 // SetIdempotencyKey sets the idempotency key in the correlation context.
 func SetIdempotencyKey(ctx context.Context, key string) context.Context {
-	return SetKey(ctx, IdempotencyKey, key)
+	return SetKey(ctx, IdempotencyKeyID, key)
 }
 
 // Keys returns all correlation keys present in the context.

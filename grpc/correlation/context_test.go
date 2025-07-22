@@ -589,7 +589,7 @@ func TestIdempotencyKey(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := corr.Idempotency(tt.ctx); got != tt.want {
+			if got := corr.IdempotencyKey(tt.ctx); got != tt.want {
 				t.Errorf("Idempotency() = %v, want %v", got, tt.want)
 			}
 		})
@@ -626,7 +626,7 @@ func TestSetIdempotencyKey(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotCtx := corr.SetIdempotencyKey(tt.ctx, tt.val)
-			if got := corr.Idempotency(gotCtx); got != tt.want {
+			if got := corr.IdempotencyKey(gotCtx); got != tt.want {
 				t.Errorf("SetIdempotency() got = %v, want %v", got, tt.want)
 			}
 		})
