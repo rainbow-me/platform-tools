@@ -1,6 +1,7 @@
 package interceptors
 
 import (
+	"google.golang.org/grpc/codes"
 	"time"
 
 	grpctrace "github.com/DataDog/dd-trace-go/contrib/google.golang.org/grpc/v2"
@@ -88,9 +89,14 @@ func NewConfig(serviceName, environment string, opts ...ConfigOption) *Config {
 		LoggingOptions: []LoggingInterceptorOption{
 			LogEnabled(true),
 			LogLevel(zapcore.InfoLevel),
-			LogRequests(true),
+			LogRequests(false),
 			LogResponses(false),                         // Default to false to avoid logging sensitive data
 			WithSkippedLogsByMethods(healthCheckMethod), // Skip health check method by default
+			GrpcCodeLogLevel(
+				map[codes.Code]zapcore.Level{
+					codes.Canceled: zapcore.WarnLevel, // Handle cancellations as warnings to prevent excessive logging
+				},
+			),
 		},
 	}
 
