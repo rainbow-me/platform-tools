@@ -25,9 +25,9 @@ Initialize the Datadog tracer in your `main` function (required for baggage prop
 import "github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 
 func main() {
-tracer.Start( /* options, e.g., tracer.WithEnv("prod") */)
-defer tracer.Stop()
-// ... rest of your setup
+    tracer.Start( /* options, e.g., tracer.WithEnv("prod") */)
+    defer tracer.Stop()
+    // ... rest of your setup
 }
 ```
 
@@ -46,6 +46,7 @@ ctx = correlation.Set(ctx, map[string]string{"session_id": "abc", "device": "mob
 // Special helpers
 ctx = correlation.SetTenancy(ctx, "org1")
 ctx = correlation.SetID(ctx, uuid.NewString()) // Or auto-generated in interceptor if missing
+ctx = correlation.SetIdempotency(ctx, "idempotent_op_123")
 ```
 
 #### Getting Data
@@ -56,6 +57,7 @@ Retrieve values or the entire map:
 userID := correlation.GetValue(ctx, "user_id")
 tenancy := correlation.Tenancy(ctx)
 corrID := correlation.ID(ctx)
+ik := correlation.Idempotency(ctx)
 
 allData := correlation.Get(ctx)
 hasUser := correlation.Has(ctx, "user_id")

@@ -569,6 +569,70 @@ func TestSetID(t *testing.T) {
 	}
 }
 
+func TestIdempotencyKey(t *testing.T) {
+	tests := []struct {
+		name string
+		ctx  context.Context
+		want string
+	}{
+		{
+			name: "not found",
+			ctx:  context.Background(),
+			want: "",
+		},
+		{
+			name: "found",
+			ctx:  corr.SetIdempotencyKey(context.Background(), "key1"),
+			want: "key1",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := corr.Idempotency(tt.ctx); got != tt.want {
+				t.Errorf("Idempotency() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSetIdempotencyKey(t *testing.T) {
+	tests := []struct {
+		name string
+		ctx  context.Context
+		val  string
+		want string
+	}{
+		{
+			name: "set",
+			ctx:  context.Background(),
+			val:  "key1",
+			want: "key1",
+		},
+		{
+			name: "update",
+			ctx:  corr.SetIdempotencyKey(context.Background(), "old"),
+			val:  "new",
+			want: "new",
+		},
+		{
+			name: "set empty",
+			ctx:  context.Background(),
+			val:  "",
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotCtx := corr.SetIdempotencyKey(tt.ctx, tt.val)
+			if got := corr.Idempotency(gotCtx); got != tt.want {
+				t.Errorf("SetIdempotency() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestKeys(t *testing.T) {
 	tests := []struct {
 		name string
