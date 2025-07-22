@@ -149,6 +149,7 @@ func NewDefaultServerUnaryChain(
 		chain.Push("logger", UnaryLoggerServerInterceptor(logger, cfg.LoggingOptions...))
 	}
 
+	// add errors handling
 	chain.Push("errors", UnaryErrorServerInterceptor)
 
 	// Add panic recovery interceptor if enabled
