@@ -3,6 +3,8 @@ package interceptors
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"os"
 	"runtime/debug"
 	"time"
 
@@ -121,12 +123,13 @@ func logPanicWithFallback(panicMessage, panicType string, logger *zap.Logger) {
 			zap.Stack(StackTraceKey),
 		)
 	} else {
-		// Fallback to standard output
-		fmt.Printf("Recovered from panic at %s\nPanic value: %s\nPanic type: %s\nStack trace:\n%s\n",
-			time.Now().Format(time.RFC3339),
-			panicMessage,
-			panicType,
-			string(debug.Stack()),
+		// Fallback to standard error using slog
+		l := slog.New(slog.NewTextHandler(os.Stderr, nil))
+		l.Error("Recovered from panic",
+			"time", time.Now().Format(time.RFC3339),
+			"panic_value", panicMessage,
+			"panic_type", panicType,
+			"stack_trace", string(debug.Stack()),
 		)
 	}
 }
