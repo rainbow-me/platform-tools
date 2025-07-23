@@ -36,7 +36,7 @@ const (
 	requestIDKey  = "request_id"
 	serviceKey    = "service"
 	methodKey     = "method"
-	grpcStatuKey  = "status"
+	grpcStatusKey = "status"
 
 	// Request/response payloads
 	requestKey  = "request"
@@ -174,7 +174,7 @@ func buildStatusLogFields(err error) []zapcore.Field {
 	var fields []zapcore.Field
 
 	statusValue := status.Convert(err)
-	fields = append(fields, zap.String(grpcStatuKey, statusValue.Code().String()))
+	fields = append(fields, zap.String(grpcStatusKey, statusValue.Code().String()))
 
 	// Add error details if present
 	if err != nil {
