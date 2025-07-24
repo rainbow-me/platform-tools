@@ -18,6 +18,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/rainbow-me/platform-tools/common/logger"
 	internalmetadata "github.com/rainbow-me/platform-tools/grpc/metadata"
 )
 
@@ -74,7 +75,7 @@ func WithGatewayOptions(opt ...runtime.ServeMuxOption) Option {
 }
 
 // WithLogger sets a custom Logger
-func WithLogger(logger *zap.Logger) Option {
+func WithLogger(logger logger.Logger) Option {
 	return func(g *Gateway) {
 		g.Logger = logger
 	}
@@ -124,7 +125,7 @@ type Gateway struct {
 	Mux                  *http.ServeMux
 	GatewayMuxOptions    []runtime.ServeMuxOption
 	HeaderConfig         internalmetadata.HeaderConfig
-	Logger               *zap.Logger
+	Logger               logger.Logger
 	Timeout              time.Duration
 	EnableRequestLogging bool
 	HealthServer         *health.Server
@@ -146,7 +147,8 @@ func NewGateway(options ...Option) (*http.ServeMux, error) {
 		HeaderConfig: internalmetadata.HeaderConfig{
 			HeadersToForward: internalmetadata.GetHeadersToForward(),
 		},
-		Logger: zap.NewNop(),
+		// TODO why is this a noop?
+		Logger: logger.NoOp(),
 	}
 
 	// apply functional options

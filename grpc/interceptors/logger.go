@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
-	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 	"github.com/mennanov/fmutils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -19,6 +18,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
+	"github.com/rainbow-me/platform-tools/common/logger"
 	"github.com/rainbow-me/platform-tools/grpc/correlation"
 	internalmetadata "github.com/rainbow-me/platform-tools/grpc/metadata"
 )
@@ -57,7 +57,7 @@ func logWithContext(
 	at string,
 	fullMethod string,
 	config *LoggingInterceptorConfig,
-	log *zap.Logger,
+	log logger.Logger,
 	req interface{},
 	handler func(ctx context.Context) (interface{}, error),
 ) (interface{}, error) {
@@ -76,7 +76,7 @@ func logWithContext(
 	baseLogFields := buildBaseLogFields(ctx, grpcService, grpcMethod)
 
 	// Add logger with base fields to context for downstream use
-	ctx = ctxzap.ToContext(ctx, log.With(baseLogFields...))
+	ctx = logger.ContextWithLogger(ctx, log.With(baseLogFields...))
 
 	// Execute the gRPC handler and measure execution time
 	startTime := time.Now()
@@ -102,7 +102,7 @@ func logWithContext(
 	logFields = append(logFields, buildMetadataLogFields(ctx)...)
 
 	// Write the log entry
-	ctxzap.Extract(ctx).Check(logLevel, at).Write(logFields...)
+	logger.FromContext(ctx).Log(logLevel, at, logFields...)
 
 	return resp, err
 }

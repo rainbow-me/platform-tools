@@ -17,6 +17,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
+	"github.com/rainbow-me/platform-tools/common/logger"
 	"github.com/rainbow-me/platform-tools/grpc/gateway"
 )
 
@@ -24,7 +25,7 @@ import (
 type Option func(*Server) error
 
 // WithLogger sets a custom zap logger for the server
-func WithLogger(logger *zap.Logger) Option {
+func WithLogger(logger logger.Logger) Option {
 	return func(s *Server) error {
 		s.logger = logger
 		return nil
@@ -175,7 +176,7 @@ type Server struct {
 	shutdownHooks   ShutdownHooks // Cleanup functions to run during shutdown
 	httpConfigs     []HTTPConfig  // Configurations for HTTP servers
 	grpcConfigs     []GRPCConfig  // Configurations for gRPC servers
-	logger          *zap.Logger   // Structured logger
+	logger          logger.Logger // Structured logger
 	signalHandling  bool          // Whether to handle OS signals
 	isAutomaticStop bool          // Whether to auto-stop on first error
 
@@ -193,11 +194,6 @@ type Server struct {
 
 // NewServer creates a Server from the given options.
 func NewServer(opts ...Option) (*Server, error) {
-	logger, err := zap.NewProduction()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create default logger: %w", err)
-	}
-
 	s := &Server{
 		shutdownTimeout: DefaultShutdownTimeout,
 		httpConfigs:     []HTTPConfig{},
@@ -206,7 +202,7 @@ func NewServer(opts ...Option) (*Server, error) {
 		grpcServers:     make(map[string]*grpc.Server),
 		isAutomaticStop: true,
 		signalHandling:  true,
-		logger:          logger,
+		logger:          logger.Instance(),
 		errChan:         make(chan error, 20),
 		signalChan:      make(chan os.Signal, 5),
 	}
@@ -214,7 +210,7 @@ func NewServer(opts ...Option) (*Server, error) {
 	s.shutdownCtx, s.shutdownCancel = context.WithCancel(context.Background())
 
 	for _, opt := range opts {
-		if err = opt(s); err != nil {
+		if err := opt(s); err != nil {
 			s.logger.Error("Failed to apply server option", zap.Error(err))
 			return nil, err
 		}
