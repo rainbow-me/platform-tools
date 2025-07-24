@@ -1,0 +1,29 @@
+name: merged-to-master
+on:
+  push:
+    branches:
+      - main
+jobs:
+  platform-tools-cd:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: '0'
+
+      - name: Bump version for common module
+        id: tagging_common
+        uses: rainbow-me/github-tag-action@1.36.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          WITH_V: true
+          SOURCE: common
+
+      - name: Bump version for grpc module (dry run)
+        id: tagging_grpc
+        uses: rainbow-me/github-tag-action@1.36.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          WITH_V: true
+          SOURCE: grpc
