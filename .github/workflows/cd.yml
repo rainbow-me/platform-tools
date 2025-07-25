@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - main
-      - "@mzhakun/update-tagging"
 jobs:
   platform-tools-cd:
     runs-on: ubuntu-latest
@@ -19,7 +18,8 @@ jobs:
         with:
           github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           tag_prefix: common/v
-          append_to_pre_release_tag: ""
+          pre_release_branches: ""
+          dry_run: true
 
       - name: Bump version and push tag for grpc module
         id: tag_grpc
@@ -27,4 +27,5 @@ jobs:
         with:
           github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           tag_prefix: grpc/v
-          append_to_pre_release_tag: ""
+          pre_release_branches: ""
+          dry_run: true
