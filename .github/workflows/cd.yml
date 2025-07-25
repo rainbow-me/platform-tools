@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - main
+      - "@mzhakun/update-tagging"
 jobs:
   platform-tools-cd:
     runs-on: ubuntu-latest
