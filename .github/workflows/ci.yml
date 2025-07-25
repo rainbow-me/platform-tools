@@ -8,28 +8,44 @@ on:
       - main
 
 jobs:
-  platform-tools-ci:
+  tag-all-modules:
     runs-on: ubuntu-latest
-    env:
-      PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Go environment
-        uses: actions/setup-go@v4
         with:
-          go-version: ${{ env.go-version }}
-          check-latest: true
+          fetch-depth: 0
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
-      - name: Install tools
+      - name: Configure Git
         run: |
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.5
-          go install golang.org/x/vuln/cmd/govulncheck@latest
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Run Linters
-        run: make lint
-
-      - name: Run Tests
-        run: make test
-
-      - name: Check for Vulnerabilities
-        run: make govulncheck
+      - name: Tag all modules
+        run: |
+          MODULES=("common" "grpc")
+          
+          for MODULE in "${MODULES[@]}"; do
+            echo "=== Tagging $MODULE module ==="
+          
+            # Get latest tag for this module
+            LATEST_TAG=$(git tag -l "${MODULE}/v*" | sort -V | tail -n 1)
+          
+            if [ -z "$LATEST_TAG" ]; then
+              # First release
+              NEW_VERSION="0.1.0"
+            else
+              # Extract current version and bump patch
+              CURRENT="${LATEST_TAG#${MODULE}/v}"
+              IFS='.' read -r major minor patch <<< "$CURRENT"
+              NEW_VERSION="${major}.${minor}.$((patch + 1))"
+            fi
+          
+            NEW_TAG="${MODULE}/v${NEW_VERSION}"
+          
+            # Create and push tag
+            git tag -a "$NEW_TAG" -m "Release $NEW_TAG - $(date +%Y-%m-%d)"
+            git push origin "$NEW_TAG"
+          
+            echo "Tagged $MODULE: $NEW_TAG"
+          done
