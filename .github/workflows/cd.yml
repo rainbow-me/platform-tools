@@ -1,29 +1,58 @@
-name: merged-to-master
+name: merged-to-main
+
 on:
   push:
     branches:
       - main
+      - '@mzhakun/update-tagging'
+
 jobs:
-  platform-tools-cd:
+  tag-modules:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
     steps:
-      - name: Checkout repository
+      - name: Checkout repo with full history
         uses: actions/checkout@v4
         with:
-          fetch-depth: '0'
+          fetch-depth: 0
 
-      - name: Bump version for common module
-        id: tagging_common
+      - name: Get changed files
+        id: changes
+        run: |
+          echo "BASE_REF=$(git merge-base origin/main HEAD)" >> $GITHUB_ENV
+          echo "CHANGED=$(git diff --name-only $BASE_REF HEAD)" >> $GITHUB_ENV
+
+      - name: Detect module changes
+        id: detect_modules
+        run: |
+          echo "common_changed=false" >> $GITHUB_ENV
+          echo "grpc_changed=false" >> $GITHUB_ENV
+
+          if echo "$CHANGED" | grep -q '^common/'; then
+            echo "common_changed=true" >> $GITHUB_ENV
+          fi
+          if echo "$CHANGED" | grep -q '^grpc/'; then
+            echo "grpc_changed=true" >> $GITHUB_ENV
+          fi
+
+      - name: Tag common module
+        if: env.common_changed == 'true'
         uses: rainbow-me/github-tag-action@1.36.0
+        with:
+          tag_prefix: common/
         env:
           GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-          WITH_V: true
           SOURCE: common
+          WITH_V: true
 
-      - name: Bump version for grpc module (dry run)
-        id: tagging_grpc
+      - name: Tag grpc module
+        if: env.grpc_changed == 'true'
         uses: rainbow-me/github-tag-action@1.36.0
+        with:
+          tag_prefix: grpc/
         env:
           GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-          WITH_V: true
           SOURCE: grpc
+          WITH_V: true
