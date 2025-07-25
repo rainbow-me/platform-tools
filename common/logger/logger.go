@@ -29,8 +29,8 @@ func NewStringJSONEncoder(cfg zapcore.EncoderConfig) (zapcore.Encoder, error) {
 	return newStringJSONEncoder(cfg), nil
 }
 
-// InitLogger initializes and returns a configured Zap logger with environment-specific settings.
-func InitLogger(zapOpts ...zap.Option) (*zap.Logger, error) {
+// NewLogger initializes and returns a configured Zap logger with environment-specific settings.
+func NewLogger(zapOpts ...zap.Option) (*zap.Logger, error) {
 	var (
 		config  zap.Config
 		options []zap.Option
@@ -67,14 +67,14 @@ func InitLogger(zapOpts ...zap.Option) (*zap.Logger, error) {
 		config = zap.NewDevelopmentConfig()
 		config.EncoderConfig.MessageKey = MessageKey
 		config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
-		options = append(options, zap.AddStacktrace(zap.ErrorLevel))
+		options = append(options, zap.AddStacktrace(zap.PanicLevel))
 
 	case string(env.EnvironmentLocalDocker), string(env.EnvironmentDevelopment), string(env.EnvironmentStaging):
 		// Development/Staging: JSON logs for Datadog ingestion
 		config = zap.NewDevelopmentConfig()
 		config.EncoderConfig = encoderConfig
 		config.Encoding = StringJSONEncoderName
-		options = append(options, zap.AddStacktrace(zap.ErrorLevel))
+		options = append(options, zap.AddStacktrace(zap.PanicLevel))
 
 	case string(env.EnvironmentProduction):
 		// Production: JSON logs with structured metadata
@@ -82,7 +82,7 @@ func InitLogger(zapOpts ...zap.Option) (*zap.Logger, error) {
 		config.EncoderConfig = encoderConfig
 		config.Encoding = StringJSONEncoderName
 		config.Level.SetLevel(zap.InfoLevel)
-		options = append(options, zap.AddStacktrace(zap.ErrorLevel))
+		options = append(options, zap.AddStacktrace(zap.PanicLevel))
 	}
 
 	// Apply additional logging options if provided
