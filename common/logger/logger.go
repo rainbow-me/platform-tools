@@ -29,7 +29,7 @@ func NewStringJSONEncoder(cfg zapcore.EncoderConfig) (zapcore.Encoder, error) {
 	return newStringJSONEncoder(cfg), nil
 }
 
-// InitLogger initializes and returns a configured Zap logger with environment-specific settings. and other
+// InitLogger initializes and returns a configured Zap logger with environment-specific settings.
 func InitLogger(zapOpts ...zap.Option) (*zap.Logger, error) {
 	var (
 		config  zap.Config
