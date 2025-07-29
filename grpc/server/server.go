@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -14,9 +13,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/cockroachdb/errors"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
+	"github.com/rainbow-me/platform-tools/common/logger"
 	"github.com/rainbow-me/platform-tools/grpc/gateway"
 )
 
@@ -24,7 +25,7 @@ import (
 type Option func(*Server) error
 
 // WithLogger sets a custom zap logger for the server
-func WithLogger(logger *zap.Logger) Option {
+func WithLogger(logger *logger.Logger) Option {
 	return func(s *Server) error {
 		s.logger = logger
 		return nil
@@ -171,13 +172,13 @@ func normalizePort(port string) string {
 // and shutdown hooks.
 type Server struct {
 	// Configuration
-	shutdownTimeout time.Duration // Timeout for graceful shutdown
-	shutdownHooks   ShutdownHooks // Cleanup functions to run during shutdown
-	httpConfigs     []HTTPConfig  // Configurations for HTTP servers
-	grpcConfigs     []GRPCConfig  // Configurations for gRPC servers
-	logger          *zap.Logger   // Structured logger
-	signalHandling  bool          // Whether to handle OS signals
-	isAutomaticStop bool          // Whether to auto-stop on first error
+	shutdownTimeout time.Duration  // Timeout for graceful shutdown
+	shutdownHooks   ShutdownHooks  // Cleanup functions to run during shutdown
+	httpConfigs     []HTTPConfig   // Configurations for HTTP servers
+	grpcConfigs     []GRPCConfig   // Configurations for gRPC servers
+	logger          *logger.Logger // Structured logger
+	signalHandling  bool           // Whether to handle OS signals
+	isAutomaticStop bool           // Whether to auto-stop on first error
 
 	// Runtime state
 	httpServers    map[string]*http.Server // Running HTTP servers by name
@@ -193,11 +194,10 @@ type Server struct {
 
 // NewServer creates a Server from the given options.
 func NewServer(opts ...Option) (*Server, error) {
-	logger, err := zap.NewProduction()
+	log, err := logger.Instance()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create default logger: %w", err)
+		return nil, errors.Wrap(err, "failed to create logger")
 	}
-
 	s := &Server{
 		shutdownTimeout: DefaultShutdownTimeout,
 		httpConfigs:     []HTTPConfig{},
@@ -206,7 +206,7 @@ func NewServer(opts ...Option) (*Server, error) {
 		grpcServers:     make(map[string]*grpc.Server),
 		isAutomaticStop: true,
 		signalHandling:  true,
-		logger:          logger,
+		logger:          log,
 		errChan:         make(chan error, 20),
 		signalChan:      make(chan os.Signal, 5),
 	}

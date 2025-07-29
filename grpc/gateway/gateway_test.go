@@ -12,14 +12,14 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/metadata"
 
+	"github.com/rainbow-me/platform-tools/common/logger"
+	"github.com/rainbow-me/platform-tools/common/test"
 	"github.com/rainbow-me/platform-tools/grpc/gateway"
 	internalmetadata "github.com/rainbow-me/platform-tools/grpc/metadata"
 	testpb "github.com/rainbow-me/platform-tools/grpc/protos/gen/go/test"
@@ -60,7 +60,7 @@ func TestNewGateway(t *testing.T) {
 		{
 			name: "with Logger",
 			options: []gateway.Option{
-				gateway.WithLogger(zap.NewNop()),
+				gateway.WithLogger(logger.NoOp()),
 				gateway.WithEndpointRegistration("/api/",
 					func(_ context.Context, _ *runtime.ServeMux, _ string, _ []grpc.DialOption) error {
 						return nil
@@ -168,7 +168,7 @@ func TestGateway_metadataAnnotator(t *testing.T) {
 		HeaderConfig: internalmetadata.HeaderConfig{
 			HeadersToForward: []string{"X-Test"},
 		},
-		Logger: zap.NewNop(),
+		Logger: logger.NoOp(),
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -224,7 +224,7 @@ func TestGateway_shouldForwardResponseHeader(t *testing.T) {
 }
 
 func TestGateway_protoMessageErrorHandler(t *testing.T) {
-	g := &gateway.Gateway{Logger: zap.NewNop()}
+	g := &gateway.Gateway{Logger: logger.NoOp()}
 	mux := runtime.NewServeMux()
 	marshaller := &runtime.JSONPb{}
 	w := httptest.NewRecorder()
@@ -240,7 +240,7 @@ func TestGateway_responseHeaderHandler(t *testing.T) {
 		HeaderConfig: internalmetadata.HeaderConfig{
 			HeadersToForward: []string{"X-Test"},
 		},
-		Logger: zap.NewNop(),
+		Logger: logger.NoOp(),
 	}
 
 	w := httptest.NewRecorder()
@@ -265,7 +265,7 @@ func TestGateway_responseHeaderHandler_Trailers(t *testing.T) {
 		HeaderConfig: internalmetadata.HeaderConfig{
 			HeadersToForward: []string{"X-Trailer"},
 		},
-		Logger: zap.NewNop(),
+		Logger: logger.NoOp(),
 	}
 
 	w := httptest.NewRecorder()
@@ -282,8 +282,7 @@ func TestGateway_responseHeaderHandler_Trailers(t *testing.T) {
 }
 
 func TestGateway_wrapHandler(t *testing.T) {
-	logger := zaptest.NewLogger(t)
-	g := &gateway.Gateway{Logger: logger}
+	g := &gateway.Gateway{Logger: test.NewLogger(t)}
 
 	handler := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
 	wrapped := g.WrapHandler(handler)
@@ -294,7 +293,7 @@ func TestGateway_wrapHandler(t *testing.T) {
 }
 
 func TestGateway_registerEndpoints(t *testing.T) {
-	logger := zap.NewNop()
+	logger := logger.NoOp()
 	g := &gateway.Gateway{
 		Endpoints: map[string][]gateway.RegisterFunc{
 			"/api/": {func(_ context.Context, _ *runtime.ServeMux, _ string, _ []grpc.DialOption) error {
@@ -321,7 +320,7 @@ func TestGateway_registerEndpoints_InvalidPrefix(t *testing.T) {
 		Endpoints: map[string][]gateway.RegisterFunc{
 			"invalid": {},
 		},
-		Logger: zap.NewNop(),
+		Logger: logger.NoOp(),
 	}
 
 	_, err := g.RegisterEndpoints()
@@ -335,7 +334,7 @@ func TestGateway_registerEndpoints_RegistrationError(t *testing.T) {
 				return errors.New("fail")
 			}},
 		},
-		Logger: zap.NewNop(),
+		Logger: logger.NoOp(),
 	}
 
 	_, err := g.RegisterEndpoints()
@@ -344,7 +343,7 @@ func TestGateway_registerEndpoints_RegistrationError(t *testing.T) {
 
 func TestGateway_NoLoggingIfNotSpecified(t *testing.T) {
 	g := &gateway.Gateway{
-		Logger: zap.NewNop(),
+		Logger: logger.NoOp(),
 	}
 
 	// Nop Logger doesn't log, which is the default
@@ -537,10 +536,9 @@ func TestGateway_healthHandler_1(t *testing.T) {
 			for svc, status := range tt.setupStatus {
 				hs.SetServingStatus(svc, status)
 			}
-			logger := zaptest.NewLogger(t)
 			g := &gateway.Gateway{
 				HealthServer: hs,
-				Logger:       logger,
+				Logger:       test.NewLogger(t),
 			}
 
 			handler := g.HealthHandler()
