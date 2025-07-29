@@ -100,8 +100,7 @@ func Init() error {
 	once.Do(func() {
 		currentEnv, err := env.FromString(os.Getenv(env.ApplicationEnvKey))
 		if err != nil {
-			errLog = errors.Wrap(err, "invalid environment")
-			return
+			currentEnv = env.EnvironmentLocal
 		}
 		zLog, err = newZapLogger(currentEnv)
 		if err != nil {
