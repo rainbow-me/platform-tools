@@ -6,6 +6,7 @@ PROJECT := platform-tools
 VERSION := $(shell git describe --tags --always 2>/dev/null || git rev-parse --short HEAD)
 BUILD := $(shell git rev-parse --short HEAD)
 DOCKER_TAG="rainbow/$(PROJECT):$(VERSION)"
+GO_TARGETS=./...
 
 
 #
@@ -64,19 +65,20 @@ validation_deps: info clean
 .PHONY: install
 install: info clean
 	@echo "--- Installing project dependencies..."
-	@GOPRIVATE=github.com/rainbow-me go get ./...
+	@GOPRIVATE=github.com/rainbow-me go get ${GO_TARGETS}
 
 # lint app
 .PHONY: lint
 lint:
 	@echo "Running golangci-lint"
-	@golangci-lint run ./... || exit 1
+	@golangci-lint run ${GO_TARGETS} || exit 1
 
 
 .PHONY: fmt
 fmt:
 	@gofmt -w .
 	@gci write --skip-generated -s standard -s default -s "prefix(github.com/rainbow-me)" .
+
 
 # Run tests with the race detector both enabled and disabled. Enabling the race
 # detector can affect timing of events which can mask non-data race failures.
@@ -85,10 +87,10 @@ fmt:
 .PHONY: unit
 unit:
 	@echo "🐢 Running tests without race detector..."
-	CGO_ENABLED=0 gotestsum --format testname --junitfile ../junit-tests-$$mod.xml -- -cover -coverprofile=../coverage-$$mod.out ./...
+	CGO_ENABLED=0 gotestsum --format testname --junitfile ../junit-tests-$$mod.xml -- -cover -coverprofile=../coverage-$$mod.out ${GO_TARGETS}
 
 	@echo "🏎️ Running tests with race detector..."
-	CGO_ENABLED=1 gotestsum --format testname -- -race ./...
+	CGO_ENABLED=1 gotestsum --format testname -- -race ${GO_TARGETS}
 
 test-setup:
 	@which gotestsum 2>&1 > /dev/null || go install gotest.tools/gotestsum@latest
@@ -101,7 +103,7 @@ coverage:
 	@go tool cover -func=coverage.out
 
 .PHONY: test
-test: info clean test-setup unit coverage
+test: info test-setup unit coverage
 
 
 .PHONY: govulncheck
@@ -111,7 +113,7 @@ govulncheck:
 		echo "Installing govulncheck..."; \
 		GO111MODULE=on go install golang.org/x/vuln/cmd/govulncheck@latest; \
 	fi;
-	@govulncheck ./...
+	@govulncheck ${GO_TARGETS}
 
 
 .PHONY: proto_lint
