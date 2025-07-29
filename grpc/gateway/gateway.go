@@ -75,7 +75,7 @@ func WithGatewayOptions(opt ...runtime.ServeMuxOption) Option {
 }
 
 // WithLogger sets a custom Logger
-func WithLogger(logger logger.Logger) Option {
+func WithLogger(logger *logger.Logger) Option {
 	return func(g *Gateway) {
 		g.Logger = logger
 	}
@@ -125,7 +125,7 @@ type Gateway struct {
 	Mux                  *http.ServeMux
 	GatewayMuxOptions    []runtime.ServeMuxOption
 	HeaderConfig         internalmetadata.HeaderConfig
-	Logger               logger.Logger
+	Logger               *logger.Logger
 	Timeout              time.Duration
 	EnableRequestLogging bool
 	HealthServer         *health.Server

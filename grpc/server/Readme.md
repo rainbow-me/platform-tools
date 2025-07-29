@@ -165,7 +165,7 @@ func main() {
 
 ### Configuration Options
 
-- **WithLogger(logger logger.Logger)**: Set custom logger.
+- **WithLogger(logger *logger.Logger)**: Set custom logger.
 - **WithShutdownTimeout(d time.Duration)**: Set graceful shutdown timeout.
 - **WithHTTPServer(name, port string, handler http.Handler, opts ...HTTPConfigOption)**: Add HTTP server.
     - Options: `WithHTTPReadTimeout`, `WithHTTPWriteTimeout`, etc.

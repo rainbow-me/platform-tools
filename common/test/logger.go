@@ -9,6 +9,6 @@ import (
 )
 
 // NewLogger returns a logger that only prints if a test fails
-func NewLogger(t *testing.T) logger.Logger {
-	return logger.NewZapLogger(zaptest.NewLogger(t))
+func NewLogger(t *testing.T) *logger.Logger {
+	return logger.NewLogger(zaptest.NewLogger(t))
 }

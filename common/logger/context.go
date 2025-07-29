@@ -9,23 +9,23 @@ import (
 type loggerKey struct{}
 
 // FromContext extracts a logger from the context or instantiates a new one if none found
-func FromContext(ctx context.Context) Logger {
-	if logger, ok := ctx.Value(loggerKey{}).(Logger); ok {
+func FromContext(ctx context.Context) *Logger {
+	if logger, ok := ctx.Value(loggerKey{}).(*Logger); ok {
 		return logger
 	}
 	log, err := Instance()
 	if err != nil {
-		z, err := zap.NewProduction()
-		if err != nil {
+		z, zErr := zap.NewProduction()
+		if zErr != nil {
 			z = zap.NewNop()
 		}
-		return NewZapLogger(z)
+		return NewLogger(z)
 	}
 	return log
 }
 
 // ContextWithLogger returns a context with the logger stored for later retrieval via FromContext
-func ContextWithLogger(ctx context.Context, logger Logger) context.Context {
+func ContextWithLogger(ctx context.Context, logger *Logger) context.Context {
 	return context.WithValue(ctx, loggerKey{}, logger)
 }
 

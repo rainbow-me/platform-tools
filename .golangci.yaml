@@ -11,7 +11,7 @@ run:
   # - `cfg`: the paths will be relative to the configuration file.
   # - `wd` (NOT recommended): the paths will be relative to the place where golangci-lint is run.
   # Default: wd
-  relative-path-mode: gomod
+  relative-path-mode: gitroot
 
 
 # This file contains only configs which differ from defaults.
