@@ -2,6 +2,8 @@ package logger
 
 import (
 	"context"
+
+	"go.uber.org/zap"
 )
 
 type loggerKey struct{}
@@ -11,7 +13,15 @@ func FromContext(ctx context.Context) Logger {
 	if logger, ok := ctx.Value(loggerKey{}).(Logger); ok {
 		return logger
 	}
-	return Instance()
+	log, err := Instance()
+	if err != nil {
+		z, err := zap.NewProduction()
+		if err != nil {
+			z = zap.NewNop()
+		}
+		return NewZapLogger(z)
+	}
+	return log
 }
 
 // ContextWithLogger returns a context with the logger stored for later retrieval via FromContext

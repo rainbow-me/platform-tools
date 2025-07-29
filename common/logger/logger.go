@@ -5,6 +5,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/cockroachdb/errors"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
@@ -33,8 +34,9 @@ type Logger interface {
 type Level zapcore.Level
 
 var (
-	zLog *ZapLogger
-	once sync.Once
+	zLog   *ZapLogger
+	logErr error
+	once   sync.Once
 )
 
 type ZapLogger struct {
@@ -108,26 +110,29 @@ func (l *ZapLogger) WithOptions(option ...zap.Option) Logger {
 // Init can be called early during application bootstrap to initialize a logger,
 // but it's optional as the first call to Instance will trigger this.
 // Note that in case of failure to instantiate a Logger, this will panic.
-func Init() {
+func Init() error {
 	once.Do(func() {
 		currentEnv, err := env.FromString(os.Getenv(env.ApplicationEnvKey))
 		if err != nil {
-			panic(fmt.Errorf("invalid environment: %w", err))
+			logErr = errors.Wrap(err, "invalid environment")
+			return
 		}
 		zLog, err = newZapLogger(currentEnv)
 		if err != nil {
-			panic(fmt.Errorf("failed to initialize logger: %w", err))
+			logErr = errors.Wrap(err, "failed to initialize logger")
 		}
 	})
+	return logErr
 }
 
 // Instance returns the singleton instance of the application logger, initializing it on the first invocation.
 // Note that in case of failure to instantiate a Logger, this will panic.
-func Instance() Logger {
+func Instance() (Logger, error) {
+	var err error
 	if zLog == nil {
-		Init()
+		err = Init()
 	}
-	return zLog
+	return zLog, err
 }
 
 // NoOp returns a "no operations" logger, which swallows statements without printing anything
