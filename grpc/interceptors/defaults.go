@@ -61,7 +61,7 @@ func WithBasicLogging(enabled bool, level zapcore.Level) ConfigOption {
 		LogEnabled(enabled),
 		LogLevel(level),
 		ErrorLogLevel(zapcore.ErrorLevel),
-		LogRequests(false),
+		LogRequests(true),
 		LogResponses(false),
 		LogParams(false),
 	)

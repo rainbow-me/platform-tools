@@ -126,6 +126,18 @@ func buildBaseLogFields(ctx context.Context, grpcService, grpcMethod string) []z
 		zap.String(serviceKey, grpcService),
 	)
 
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return fields
+	}
+
+	requestID := md.Get(internalmetadata.HeaderXRequestID)
+	if len(requestID) > 0 {
+		fields = append(fields, zap.String(requestIDKey, requestID[0]))
+	} else {
+		fields = append(fields, zap.String(requestIDKey, "unknown"))
+	}
+
 	return fields
 }
 
@@ -204,13 +216,6 @@ func buildMetadataLogFields(ctx context.Context) []zapcore.Field {
 	// Check if this is a new trace (no incoming trace ID)
 	traceIDs := md.Get(tracer.DefaultTraceIDHeader)
 	fields = append(fields, zap.Bool(isNewTraceKey, len(traceIDs) == 0))
-
-	requestID := md.Get(internalmetadata.HeaderXRequestID)
-	if len(requestID) > 0 {
-		fields = append(fields, zap.String(requestIDKey, requestID[0]))
-	} else {
-		fields = append(fields, zap.String(requestIDKey, "unknown"))
-	}
 
 	return fields
 }
