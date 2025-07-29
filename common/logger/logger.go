@@ -144,8 +144,8 @@ func newZapLogger(environment env.Environment) (*Logger, error) {
 		MessageKey:     MessageKey,
 		StacktraceKey:  StacktraceKey,
 		LineEnding:     zapcore.DefaultLineEnding,
-		EncodeTime:     zapcore.ISO8601TimeEncoder,       // Use human-readable timestamp format
-		EncodeLevel:    zapcore.CapitalColorLevelEncoder, // INFO, WARN, ERROR, etc.
+		EncodeTime:     zapcore.ISO8601TimeEncoder,  // Use human-readable timestamp format
+		EncodeLevel:    zapcore.CapitalLevelEncoder, // INFO, WARN, ERROR, etc.
 		EncodeDuration: zapcore.SecondsDurationEncoder,
 		EncodeCaller:   zapcore.ShortCallerEncoder, // Short file path
 	}
@@ -154,6 +154,7 @@ func newZapLogger(environment env.Environment) (*Logger, error) {
 	switch environment {
 	case env.EnvironmentLocal:
 		config = zap.NewDevelopmentConfig()
+		config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 		options = append(options, zap.AddStacktrace(zap.PanicLevel))
 
 	case env.EnvironmentLocalDocker, env.EnvironmentDevelopment, env.EnvironmentStaging:
