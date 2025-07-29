@@ -17,7 +17,7 @@ import (
 // - gRPC method and service names
 // - Client ID and trace information
 // - Error details and status codes
-func UnaryLoggerServerInterceptor(log logger.Logger, opts ...LoggingInterceptorOption) grpc.UnaryServerInterceptor {
+func UnaryLoggerServerInterceptor(log *logger.Logger, opts ...LoggingInterceptorOption) grpc.UnaryServerInterceptor {
 	// Build configuration from provided options
 	config := interceptorConfig(opts...)
 

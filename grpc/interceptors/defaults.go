@@ -126,7 +126,7 @@ func NewConfig(serviceName, environment string, opts ...ConfigOption) *Config {
 func NewDefaultServerUnaryChain(
 	serviceName,
 	environment string,
-	logger logger.Logger,
+	logger *logger.Logger,
 	opts ...ConfigOption,
 ) *UnaryServerInterceptorChain {
 	// Create configuration with provided options
@@ -172,7 +172,7 @@ func NewDefaultServerUnaryChain(
 
 func NewDefaultClientUnaryChain(
 	serviceName string,
-	logger logger.Logger,
+	logger *logger.Logger,
 	loggerOpts ...LoggingInterceptorOption,
 ) *UnaryClientInterceptorChain {
 	chain := NewUnaryClientInterceptorChain()
@@ -193,7 +193,7 @@ func NewDefaultClientUnaryChain(
 // Convenience functions for common configurations
 
 // NewProductionServerChain creates a production-ready server interceptor chain
-func NewProductionServerChain(serviceName, environment string, logger logger.Logger) *UnaryServerInterceptorChain {
+func NewProductionServerChain(serviceName, environment string, logger *logger.Logger) *UnaryServerInterceptorChain {
 	return NewDefaultServerUnaryChain(serviceName, environment, logger,
 		WithRequestTimeout(30*time.Second),
 		WithBasicLogging(true, zapcore.InfoLevel),
@@ -203,7 +203,7 @@ func NewProductionServerChain(serviceName, environment string, logger logger.Log
 }
 
 // NewDevelopmentServerChain creates a development-friendly server interceptor chain
-func NewDevelopmentServerChain(serviceName, environment string, logger logger.Logger) *UnaryServerInterceptorChain {
+func NewDevelopmentServerChain(serviceName, environment string, logger *logger.Logger) *UnaryServerInterceptorChain {
 	return NewDefaultServerUnaryChain(serviceName, environment, logger,
 		WithRequestTimeout(60*time.Second),
 		WithDetailedLogging(),
@@ -213,7 +213,7 @@ func NewDevelopmentServerChain(serviceName, environment string, logger logger.Lo
 }
 
 // NewMinimalServerChain creates a minimal server interceptor chain for testing
-func NewMinimalServerChain(serviceName, environment string, logger logger.Logger) *UnaryServerInterceptorChain {
+func NewMinimalServerChain(serviceName, environment string, logger *logger.Logger) *UnaryServerInterceptorChain {
 	return NewDefaultServerUnaryChain(serviceName, environment, logger,
 		WithBasicLogging(false, zapcore.InfoLevel),
 		WithPanicRecovery(),

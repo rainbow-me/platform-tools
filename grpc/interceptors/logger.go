@@ -57,7 +57,7 @@ func logWithContext(
 	at string,
 	fullMethod string,
 	config *LoggingInterceptorConfig,
-	log logger.Logger,
+	log *logger.Logger,
 	req interface{},
 	handler func(ctx context.Context) (interface{}, error),
 ) (interface{}, error) {
