@@ -144,8 +144,8 @@ func newZapLogger(environment env.Environment) (*Logger, error) {
 		MessageKey:     MessageKey,
 		StacktraceKey:  StacktraceKey,
 		LineEnding:     zapcore.DefaultLineEnding,
-		EncodeTime:     zapcore.ISO8601TimeEncoder,  // Use human-readable timestamp format
-		EncodeLevel:    zapcore.CapitalLevelEncoder, // INFO, WARN, ERROR, etc.
+		EncodeTime:     zapcore.ISO8601TimeEncoder,       // Use human-readable timestamp format
+		EncodeLevel:    zapcore.CapitalColorLevelEncoder, // INFO, WARN, ERROR, etc.
 		EncodeDuration: zapcore.SecondsDurationEncoder,
 		EncodeCaller:   zapcore.ShortCallerEncoder, // Short file path
 	}
