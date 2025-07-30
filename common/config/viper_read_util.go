@@ -110,6 +110,8 @@ func LoadConfig(conf interface{}, logger *zap.Logger, options ...ReadConfigOptio
 
 	// Set up Viper to read the config file
 	viper.SetConfigFile(filePath)
+	viper.SetEnvPrefix("")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv() // Automatically map environment variables
 
 	// Read the configuration file
