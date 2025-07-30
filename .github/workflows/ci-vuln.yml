@@ -1,0 +1,32 @@
+name: CI vuln
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches: [main]
+
+concurrency: # cancel in-progress actions upon new branch push on the same PR, to avoid wasting compute time
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  platform-tools-ci:
+    runs-on: ubuntu-latest
+    env:
+      PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: rainbow-me/github-setup-go-action@v2
+        with:
+          personal-access-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          cache-key: vuln
+
+      - name: Install tools
+        run: make install_tools
+
+      - name: Check for Vulnerabilities
+        run: make govulncheck

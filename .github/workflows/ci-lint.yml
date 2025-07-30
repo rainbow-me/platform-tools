@@ -1,0 +1,57 @@
+name: CI lint
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches: [main]
+
+concurrency: # cancel in-progress actions upon new branch push on the same PR, to avoid wasting compute time
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  # Optional: allow read access to pull request. Use with `only-new-issues` option.
+  # pull-requests: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: rainbow-me/github-setup-go-action@v2
+        with:
+          personal-access-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          cache-key: lint
+
+      # Special action with the ability to print linter errors as PR comments
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          # Optional: version of golangci-lint to use in form of v1.2 or v1.2.3 or `latest` to use the latest version
+          version: v1.64.8 # changing here? don't forget to change install-go-tools.sh!
+
+          # Optional: working directory, useful for monorepos
+          # working-directory: somedir
+
+          # Optional: golangci-lint command line arguments.
+          # args: --issues-exit-code=0
+          args: --timeout=5m
+
+          # Optional: show only new issues if it's a pull request. The default value is `false`.
+          # only-new-issues: true
+
+          # Optional: if set to true then the all caching functionality will be completely disabled,
+          #           takes precedence over all other caching options.
+          # skip-cache: true
+
+          # Optional: if set to true then the action don't cache or restore ~/go/pkg.
+          # skip-pkg-cache: true
+
+          # Optional: if set to true then the action don't cache or restore ~/.cache/go-build.
+          # skip-build-cache: true
