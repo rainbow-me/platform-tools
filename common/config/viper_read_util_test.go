@@ -7,10 +7,10 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap/zaptest"
 
 	"github.com/rainbow-me/platform-tools/common/config"
 	"github.com/rainbow-me/platform-tools/common/env"
+	"github.com/rainbow-me/platform-tools/common/test"
 )
 
 type TestConfig struct {
@@ -65,7 +65,7 @@ func TestBasicConfigurationLoading(t *testing.T) {
 
 	viper.Reset()
 
-	logger := zaptest.NewLogger(t)
+	logger := test.NewLogger(t)
 
 	var conf TestConfig
 	err = config.LoadConfig(&conf, logger, options...)
@@ -102,7 +102,7 @@ func TestOverrideWithEnvVar(t *testing.T) {
 
 	viper.Reset()
 
-	logger := zaptest.NewLogger(t)
+	logger := test.NewLogger(t)
 
 	var conf TestConfig
 	err = config.LoadConfig(&conf, logger, options...)
@@ -140,7 +140,7 @@ func TestEnvPlaceholderReplacement(t *testing.T) {
 
 	viper.Reset()
 
-	logger := zaptest.NewLogger(t)
+	logger := test.NewLogger(t)
 
 	var conf TestConfig
 	err = config.LoadConfig(&conf, logger, options...)
@@ -172,7 +172,7 @@ func TestMissingEnvPlaceholder(t *testing.T) {
 
 	viper.Reset()
 
-	logger := zaptest.NewLogger(t)
+	logger := test.NewLogger(t)
 
 	var conf TestConfig
 	err = config.LoadConfig(&conf, logger, options...)
@@ -204,7 +204,7 @@ func TestInvalidEnvironment(t *testing.T) {
 
 	viper.Reset()
 
-	logger := zaptest.NewLogger(t)
+	logger := test.NewLogger(t)
 
 	var conf TestConfig
 	err = config.LoadConfig(&conf, logger, options...)
@@ -236,7 +236,7 @@ func TestMissingConfigFile(t *testing.T) {
 
 	viper.Reset()
 
-	logger := zaptest.NewLogger(t)
+	logger := test.NewLogger(t)
 
 	var conf TestConfig
 	err = config.LoadConfig(&conf, logger, options...)
@@ -268,7 +268,7 @@ func TestDynamicDirectory(t *testing.T) {
 
 	viper.Reset()
 
-	logger := zaptest.NewLogger(t)
+	logger := test.NewLogger(t)
 
 	var conf TestConfig
 	err = config.LoadConfig(&conf, logger, options...)
@@ -304,7 +304,7 @@ func TestAbsolutePath(t *testing.T) {
 
 	viper.Reset()
 
-	logger := zaptest.NewLogger(t)
+	logger := test.NewLogger(t)
 
 	var conf TestConfig
 	err = config.LoadConfig(&conf, logger, options...)

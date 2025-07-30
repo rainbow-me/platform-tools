@@ -6,6 +6,7 @@ PROJECT := platform-tools
 VERSION := $(shell git describe --tags --always 2>/dev/null || git rev-parse --short HEAD)
 BUILD := $(shell git rev-parse --short HEAD)
 DOCKER_TAG="rainbow/$(PROJECT):$(VERSION)"
+GO_TARGETS=./...
 
 
 #
@@ -14,9 +15,6 @@ DOCKER_TAG="rainbow/$(PROJECT):$(VERSION)"
 #
 BUILD_PREREQUISITES = git go
 VALIDATION_PREREQUISITES = golangci-lint gci buf protoc-gen-go protoc-gen-go-grp
-
-# modules
-MODULES := common grpc
 
 #
 # Build Options
@@ -48,11 +46,8 @@ clean: info tidy
 
 .PHONY: tidy
 tidy:
-	@echo "Running go mod tidy in all modules..."
-	@for mod in $(MODULES); do \
-		echo "Tidying $$mod/"; \
-		(cd $$mod && go mod tidy && git diff --exit-code -- go.mod go.sum) || exit 1; \
-	done
+	@echo "Running go mod tidy"
+	@go mod tidy && git diff --exit-code -- go.mod go.sum || exit 1
 
 .PHONY: validation_deps
 validation_deps: info clean
@@ -70,22 +65,20 @@ validation_deps: info clean
 .PHONY: install
 install: info clean
 	@echo "--- Installing project dependencies..."
-	@GOPRIVATE=github.com/rainbow-me go get ./...
+	@GOPRIVATE=github.com/rainbow-me go get ${GO_TARGETS}
 
 # lint app
 .PHONY: lint
 lint:
-	@echo "Running golangci-lint on all modules..."
-	@for mod in $(MODULES); do \
-		echo "Linting $$mod/"; \
-		(cd $$mod && golangci-lint run --timeout=3m --config=../.golangci.yaml ./...) || exit 1; \
-	done
+	@echo "Running golangci-lint"
+	@golangci-lint run ${GO_TARGETS} || exit 1
 
 
 .PHONY: fmt
 fmt:
 	@gofmt -w .
 	@gci write --skip-generated -s standard -s default -s "prefix(github.com/rainbow-me)" .
+
 
 # Run tests with the race detector both enabled and disabled. Enabling the race
 # detector can affect timing of events which can mask non-data race failures.
@@ -94,16 +87,10 @@ fmt:
 .PHONY: unit
 unit:
 	@echo "🐢 Running tests without race detector..."
-	@for mod in $(MODULES); do \
-		echo "▶ Running tests in $$mod (no race detector)"; \
-		( cd $$mod && CGO_ENABLED=0 gotestsum --format testname --junitfile ../junit-tests-$$mod.xml -- -cover -coverprofile=../coverage-$$mod.out ./... ); \
-	done
+	CGO_ENABLED=0 gotestsum --format testname --junitfile ../junit-tests-$$mod.xml -- -cover -coverprofile=../coverage-$$mod.out ${GO_TARGETS}
 
 	@echo "🏎️ Running tests with race detector..."
-	@for mod in $(MODULES); do \
-		echo "▶ Running tests in $$mod (with race detector)"; \
-		( cd $$mod && CGO_ENABLED=1 gotestsum --format testname -- -race ./... ); \
-	done
+	CGO_ENABLED=1 gotestsum --format testname -- -race ${GO_TARGETS}
 
 test-setup:
 	@which gotestsum 2>&1 > /dev/null || go install gotest.tools/gotestsum@latest
@@ -116,20 +103,17 @@ coverage:
 	@go tool cover -func=coverage.out
 
 .PHONY: test
-test: info clean  test-setup unit coverage
+test: info test-setup unit coverage
 
 
 .PHONY: govulncheck
 govulncheck:
-	@echo "Running govulncheck for each module..."
-	@for mod in $(MODULES); do \
-		if ! command -v $$HOME/go/bin/govulncheck &> /dev/null; then \
-			echo "Installing govulncheck..."; \
-			GO111MODULE=on go install golang.org/x/vuln/cmd/govulncheck@latest; \
-		fi; \
-		echo "Checking module: $$mod"; \
-		(cd $$mod && govulncheck ./...); \
-	done
+	@echo "Running govulncheck"
+	@if ! command -v $$HOME/go/bin/govulncheck &> /dev/null; then \
+		echo "Installing govulncheck..."; \
+		GO111MODULE=on go install golang.org/x/vuln/cmd/govulncheck@latest; \
+	fi;
+	@govulncheck ${GO_TARGETS}
 
 
 .PHONY: proto_lint

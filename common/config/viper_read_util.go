@@ -9,6 +9,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/rainbow-me/platform-tools/common/env"
+	"github.com/rainbow-me/platform-tools/common/logger"
 )
 
 const (
@@ -53,7 +54,7 @@ func WithDynamicDir(dynamicDir string) ReadConfigOption {
 
 // LoadConfig loads the YAML configuration file based on the environment and provided options.
 // It reads from relative or absolute paths and uses Viper to parse the config file.
-func LoadConfig(conf interface{}, logger *zap.Logger, options ...ReadConfigOption) error { //nolint:cyclop
+func LoadConfig(conf interface{}, logger *logger.Logger, options ...ReadConfigOption) error { //nolint:cyclop
 	var pathToConfigDir string
 
 	// Default path setup
@@ -135,7 +136,7 @@ func LoadConfig(conf interface{}, logger *zap.Logger, options ...ReadConfigOptio
 	return nil
 }
 
-func setEnvVariableFromString(key string, value interface{}, logger *zap.Logger) {
+func setEnvVariableFromString(key string, value interface{}, logger *logger.Logger) {
 	if str, ok := value.(string); ok && strings.HasPrefix(str, envVarPrefix) {
 		// Extract the environment variable name (everything after "env://")
 		envVar := str[len(envVarPrefix):] // Dynamically extract ENV variable name

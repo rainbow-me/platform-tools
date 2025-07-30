@@ -3,8 +3,9 @@ package interceptors
 import (
 	"context"
 
-	"go.uber.org/zap"
 	"google.golang.org/grpc"
+
+	"github.com/rainbow-me/platform-tools/common/logger"
 )
 
 // UnaryLoggerClientInterceptor creates a gRPC unary client interceptor that logs
@@ -16,7 +17,7 @@ import (
 // - gRPC method and service names
 // - Client ID and trace information
 // - Error details and status codes
-func UnaryLoggerClientInterceptor(log *zap.Logger, opts ...LoggingInterceptorOption) grpc.UnaryClientInterceptor {
+func UnaryLoggerClientInterceptor(log *logger.Logger, opts ...LoggingInterceptorOption) grpc.UnaryClientInterceptor {
 	// Build configuration from provided options
 	config := interceptorConfig(opts...)
 

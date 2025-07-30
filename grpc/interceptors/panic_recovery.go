@@ -15,6 +15,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/rainbow-me/platform-tools/common/logger"
 )
 
 // Log field keys for structured logging
@@ -34,7 +36,7 @@ const (
 // - Marks tracing spans as errored if available
 // - Converts panics to gRPC Internal errors for client responses
 // - Provides fallback logging when structured logger is unavailable
-func UnaryPanicRecoveryServerInterceptor(logger *zap.Logger) grpc.UnaryServerInterceptor {
+func UnaryPanicRecoveryServerInterceptor(logger *logger.Logger) grpc.UnaryServerInterceptor {
 	return grpcrecovery.UnaryServerInterceptor(
 		grpcrecovery.WithRecoveryHandlerContext(func(ctx context.Context, panicValue interface{}) error {
 			// Extract panic information for logging
@@ -69,7 +71,7 @@ func UnaryPanicRecoveryServerInterceptor(logger *zap.Logger) grpc.UnaryServerInt
 // - Marks tracing spans as errored if available
 // - Converts panics to gRPC Internal errors for client responses
 // - Provides fallback logging when structured logger is unavailable
-func StreamPanicRecoveryServerInterceptor(logger *zap.Logger) grpc.StreamServerInterceptor {
+func StreamPanicRecoveryServerInterceptor(logger *logger.Logger) grpc.StreamServerInterceptor {
 	return grpcrecovery.StreamServerInterceptor(
 		grpcrecovery.WithRecoveryHandlerContext(func(ctx context.Context, panicValue interface{}) error {
 			// Extract panic information for logging
@@ -113,7 +115,7 @@ func extractPanicType(panicValue any) string {
 // logPanicWithFallback logs panic information using structured logging when available,
 // or falls back to standard output if the logger is unavailable.
 // This ensures panic information is never lost, even if the logging system fails.
-func logPanicWithFallback(panicMessage, panicType string, logger *zap.Logger) {
+func logPanicWithFallback(panicMessage, panicType string, logger *logger.Logger) {
 	if logger != nil {
 		// Use structured logging with additional context
 		logger.Error("Recovered from panic in gRPC handler",

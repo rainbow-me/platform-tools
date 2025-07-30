@@ -3,7 +3,9 @@ package logger
 import (
 	"fmt"
 	"os"
+	"sync"
 
+	"github.com/cockroachdb/errors"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
@@ -11,90 +13,168 @@ import (
 )
 
 const (
-	StringJSONEncoderName = "string_json"
-	MessageKey            = "message"
+	MessageKey    = "message"
+	StacktraceKey = "stacktrace"
 )
 
-type stringJSONEncoder struct {
-	zapcore.Encoder
+type Level zapcore.Level
+
+var (
+	zLog   *Logger
+	errLog error
+	once   sync.Once
+)
+
+type Logger struct {
+	zap *zap.Logger
 }
 
-func newStringJSONEncoder(cfg zapcore.EncoderConfig) *stringJSONEncoder {
-	return &stringJSONEncoder{zapcore.NewJSONEncoder(cfg)}
+func NewLogger(zap *zap.Logger) *Logger {
+	return &Logger{zap: zap}
 }
 
-// NewStringJSONEncoder returns an encoder that encodes the JSON log dict as a string
-// so the log processing pipeline can correctly process logs with nested JSON.
-func NewStringJSONEncoder(cfg zapcore.EncoderConfig) (zapcore.Encoder, error) {
-	return newStringJSONEncoder(cfg), nil
+func (l *Logger) Log(lvl zapcore.Level, msg string, fields ...Field) {
+	l.zap.Log(lvl, msg, fields...)
 }
 
-// NewLogger initializes and returns a configured Zap logger with environment-specific settings.
-func NewLogger(zapOpts ...zap.Option) (*zap.Logger, error) {
+func (l *Logger) Info(msg string, fields ...Field) {
+	l.zap.Info(msg, fields...)
+}
+
+func (l *Logger) Infof(msg string, v ...any) {
+	if len(v) > 0 {
+		l.zap.Sugar().Infof(msg, v...)
+	} else {
+		l.zap.Info(msg)
+	}
+}
+
+func (l *Logger) Debug(msg string, fields ...Field) {
+	l.zap.Debug(msg, fields...)
+}
+
+func (l *Logger) Debugf(msg string, v ...any) {
+	if len(v) > 0 {
+		l.zap.Sugar().Debugf(msg, v...)
+	} else {
+		l.zap.Debug(msg)
+	}
+}
+
+func (l *Logger) Warn(msg string, fields ...Field) {
+	l.zap.Warn(msg, fields...)
+}
+
+func (l *Logger) Warnf(msg string, v ...any) {
+	if len(v) > 0 {
+		l.zap.Sugar().Warnf(msg, v...)
+	} else {
+		l.zap.Warn(msg)
+	}
+}
+
+func (l *Logger) Error(msg string, fields ...Field) {
+	l.zap.Error(msg, fields...)
+}
+
+func (l *Logger) Errorf(msg string, v ...any) {
+	if len(v) > 0 {
+		l.zap.Sugar().Errorf(msg, v...)
+	} else {
+		l.zap.Error(msg)
+	}
+}
+
+func (l *Logger) With(fields ...Field) *Logger {
+	return &Logger{zap: l.zap.With(fields...)}
+}
+
+func (l *Logger) WithOptions(option ...zap.Option) *Logger {
+	return &Logger{zap: l.zap.WithOptions(option...)}
+}
+
+// Init can be called early during application bootstrap to initialize a logger,
+// but it's optional as the first call to Instance will trigger this.
+// Note that in case of failure to instantiate a Logger, this will panic.
+func Init() error {
+	once.Do(func() {
+		currentEnv, err := env.FromString(os.Getenv(env.ApplicationEnvKey))
+		if err != nil {
+			currentEnv = env.EnvironmentDevelopment
+		}
+		zLog, err = newZapLogger(currentEnv)
+		if err != nil {
+			errLog = errors.Wrap(err, "failed to initialize logger")
+		}
+	})
+	return errLog
+}
+
+// Instance returns the singleton instance of the application logger, initializing it on the first invocation.
+// Note that in case of failure to instantiate a Logger, this will panic.
+func Instance() (*Logger, error) {
+	var err error
+	if zLog == nil {
+		err = Init()
+	}
+	return zLog, err
+}
+
+// NoOp returns a "no operations" logger, which swallows statements without printing anything
+func NoOp() *Logger {
+	return NewLogger(zap.NewNop())
+}
+
+func newZapLogger(environment env.Environment) (*Logger, error) {
 	var (
-		config  zap.Config
-		options []zap.Option
+		config zap.Config
+
+		// skip the stack trace top entry since zap logger is wrapped by our own logger
+		options = []zap.Option{zap.AddCallerSkip(1)}
 	)
-
-	// Retrieve current environment
-	currentEnv := os.Getenv(env.ApplicationEnvKey)
-	if err := env.IsEnvironmentValid(currentEnv); err != nil {
-		return nil, fmt.Errorf("invalid environment: %w", err)
-	}
-
-	// Register custom JSON encoder
-	if err := zap.RegisterEncoder(StringJSONEncoderName, NewStringJSONEncoder); err != nil {
-		return nil, fmt.Errorf("failed to register string JSON encoder: %w", err)
-	}
 
 	// Define a consistent encoder configuration
 	encoderConfig := zapcore.EncoderConfig{
-		TimeKey:       "timestamp",
-		LevelKey:      "level",
-		NameKey:       "logger",
-		CallerKey:     "caller",
-		FunctionKey:   zapcore.OmitKey, // Hide function name for brevity
-		MessageKey:    MessageKey,
-		StacktraceKey: "stacktrace",
-		EncodeTime:    zapcore.ISO8601TimeEncoder,  // Use human-readable timestamp format
-		EncodeLevel:   zapcore.CapitalLevelEncoder, // INFO, WARN, ERROR, etc.
-		EncodeCaller:  zapcore.ShortCallerEncoder,  // Short file path
+		TimeKey:        "timestamp",
+		LevelKey:       "level",
+		NameKey:        "logger",
+		CallerKey:      "caller",
+		FunctionKey:    zapcore.OmitKey, // Hide function name for brevity
+		MessageKey:     MessageKey,
+		StacktraceKey:  StacktraceKey,
+		LineEnding:     zapcore.DefaultLineEnding,
+		EncodeTime:     zapcore.ISO8601TimeEncoder,  // Use human-readable timestamp format
+		EncodeLevel:    zapcore.CapitalLevelEncoder, // INFO, WARN, ERROR, etc.
+		EncodeDuration: zapcore.SecondsDurationEncoder,
+		EncodeCaller:   zapcore.ShortCallerEncoder, // Short file path
 	}
 
 	// Configure logging based on the environment
-	switch currentEnv {
-	case string(env.EnvironmentLocal):
+	switch environment {
+	case env.EnvironmentLocal:
 		config = zap.NewDevelopmentConfig()
-		config.EncoderConfig.MessageKey = MessageKey
 		config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 		options = append(options, zap.AddStacktrace(zap.PanicLevel))
 
-	case string(env.EnvironmentLocalDocker), string(env.EnvironmentDevelopment), string(env.EnvironmentStaging):
+	case env.EnvironmentLocalDocker, env.EnvironmentDevelopment, env.EnvironmentStaging:
 		// Development/Staging: JSON logs for Datadog ingestion
-		config = zap.NewDevelopmentConfig()
+		config = zap.NewProductionConfig()
 		config.EncoderConfig = encoderConfig
-		config.Encoding = StringJSONEncoderName
 		options = append(options, zap.AddStacktrace(zap.PanicLevel))
 
-	case string(env.EnvironmentProduction):
+	case env.EnvironmentProduction:
 		// Production: JSON logs with structured metadata
 		config = zap.NewProductionConfig()
 		config.EncoderConfig = encoderConfig
-		config.Encoding = StringJSONEncoderName
 		config.Level.SetLevel(zap.InfoLevel)
 		options = append(options, zap.AddStacktrace(zap.PanicLevel))
 	}
 
-	// Apply additional logging options if provided
-	if len(zapOpts) > 0 {
-		options = append(options, zapOpts...)
-	}
-
 	// Build the logger
-	logger, err := config.Build(options...)
+	z, err := config.Build(options...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize logger: %w", err)
 	}
 
-	return logger, nil
+	return NewLogger(z), nil
 }

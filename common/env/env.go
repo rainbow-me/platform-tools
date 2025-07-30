@@ -37,3 +37,11 @@ func IsEnvironmentValid(environment string) error {
 
 	return fmt.Errorf("invalid environment: %s must be set to one of %s", ApplicationEnvKey, envList)
 }
+
+func FromString(environment string) (Environment, error) {
+	env := Environment(environment)
+	if err := IsEnvironmentValid(environment); err != nil {
+		return "", err
+	}
+	return env, nil
+}
