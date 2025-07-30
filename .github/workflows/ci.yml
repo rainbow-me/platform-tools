@@ -14,11 +14,12 @@ jobs:
       PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Go environment
-        uses: actions/setup-go@v4
+
+      - name: Setup Go
+        uses: ./.github/actions/setup-go-with-cache
         with:
-          go-version: ${{ env.go-version }}
-          check-latest: true
+          personal-access-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          cache-key: test
 
       - name: Install tools
         run: |
