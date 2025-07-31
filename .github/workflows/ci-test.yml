@@ -14,8 +14,6 @@ concurrency: # cancel in-progress actions upon new branch push on the same PR, t
 jobs:
   platform-tools-ci:
     runs-on: ubuntu-latest
-    env:
-      PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
