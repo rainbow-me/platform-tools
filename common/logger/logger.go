@@ -135,18 +135,30 @@ func newZapLogger(environment env.Environment) (*Logger, error) {
 
 	// Define a consistent encoder configuration
 	encoderConfig := zapcore.EncoderConfig{
-		TimeKey:        "timestamp",
-		LevelKey:       "level",
-		NameKey:        "logger",
-		CallerKey:      "caller",
-		FunctionKey:    zapcore.OmitKey, // Hide function name for brevity
-		MessageKey:     MessageKey,
-		StacktraceKey:  StacktraceKey,
-		LineEnding:     zapcore.DefaultLineEnding,
-		EncodeTime:     zapcore.ISO8601TimeEncoder,  // Use human-readable timestamp format
-		EncodeLevel:    zapcore.CapitalLevelEncoder, // INFO, WARN, ERROR, etc.
-		EncodeDuration: zapcore.SecondsDurationEncoder,
-		EncodeCaller:   zapcore.ShortCallerEncoder, // Short file path
+		//TimeKey:       "timestamp",
+		//LevelKey:      "level",
+		//NameKey:       "logger",
+		//CallerKey:     "caller",
+		//FunctionKey:   zapcore.OmitKey, // Hide function name for brevity
+		//MessageKey:    MessageKey,
+		//StacktraceKey: StacktraceKey,
+		////LineEnding:     zapcore.DefaultLineEnding,
+		//EncodeTime:     zapcore.ISO8601TimeEncoder,  // Use human-readable timestamp format
+		//EncodeLevel:    zapcore.CapitalLevelEncoder, // INFO, WARN, ERROR, etc.
+		//EncodeDuration: zapcore.SecondsDurationEncoder,
+		//EncodeCaller:   zapcore.ShortCallerEncoder, // Short file path
+
+		TimeKey:       "timestamp",
+		LevelKey:      "level",
+		NameKey:       "logger",
+		CallerKey:     "caller",
+		FunctionKey:   zapcore.OmitKey, // Hide function name for brevity
+		MessageKey:    MessageKey,
+		StacktraceKey: "stacktrace",
+		EncodeTime:    zapcore.ISO8601TimeEncoder,  // Use human-readable timestamp format
+		EncodeLevel:   zapcore.CapitalLevelEncoder, // INFO, WARN, ERROR, etc.
+		EncodeCaller:  zapcore.ShortCallerEncoder,  // Short file path
+
 	}
 
 	// Configure logging based on the environment
