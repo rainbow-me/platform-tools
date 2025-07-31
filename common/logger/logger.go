@@ -154,20 +154,20 @@ func newZapLogger(environment env.Environment) (*Logger, error) {
 	case env.EnvironmentLocal:
 		config = zap.NewDevelopmentConfig()
 		config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
-		options = append(options, zap.AddStacktrace(zap.ErrorLevel))
+		options = append(options, zap.AddStacktrace(zap.PanicLevel))
 
 	case env.EnvironmentLocalDocker, env.EnvironmentDevelopment, env.EnvironmentStaging:
 		// Development/Staging: JSON logs for Datadog ingestion
 		config = zap.NewProductionConfig()
 		config.EncoderConfig = encoderConfig
-		options = append(options, zap.AddStacktrace(zap.ErrorLevel))
+		options = append(options, zap.AddStacktrace(zap.PanicLevel))
 
 	case env.EnvironmentProduction:
 		// Production: JSON logs with structured metadata
 		config = zap.NewProductionConfig()
 		config.EncoderConfig = encoderConfig
 		config.Level.SetLevel(zap.InfoLevel)
-		options = append(options, zap.AddStacktrace(zap.ErrorLevel))
+		options = append(options, zap.AddStacktrace(zap.PanicLevel))
 	}
 
 	// Build the logger
