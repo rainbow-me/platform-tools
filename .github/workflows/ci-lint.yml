@@ -3,9 +3,9 @@ name: CI lint
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
-    branches: [master]
+    branches: [main]
 
 concurrency: # cancel in-progress actions upon new branch push on the same PR, to avoid wasting compute time
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
