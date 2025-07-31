@@ -1,11 +1,15 @@
-name: CI
-env:
-  go-version: "1.23"
+name: CI test
 
 on:
-  pull_request:
+  push:
     branches:
       - main
+  pull_request:
+    branches: [main]
+
+concurrency: # cancel in-progress actions upon new branch push on the same PR, to avoid wasting compute time
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   platform-tools-ci:
@@ -22,15 +26,10 @@ jobs:
           cache-key: test
 
       - name: Install tools
-        run: |
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.5
-          go install golang.org/x/vuln/cmd/govulncheck@latest
+        run: make install_tools
 
       - name: Check tidiness
         run: make tidy
-
-      - name: Run Linters
-        run: make lint
 
       - name: Run Tests
         run: make test
