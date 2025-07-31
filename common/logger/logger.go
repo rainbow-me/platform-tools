@@ -130,7 +130,7 @@ func newZapLogger(environment env.Environment) (*Logger, error) {
 		config zap.Config
 
 		// skip the stack trace top entry since zap logger is wrapped by our own logger
-		options = []zap.Option{zap.AddCallerSkip(4)}
+		options []zap.Option
 	)
 
 	// Define a consistent encoder configuration
