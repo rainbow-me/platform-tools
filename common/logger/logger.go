@@ -130,7 +130,7 @@ func newZapLogger(environment env.Environment) (*Logger, error) {
 		config zap.Config
 
 		// skip the stack trace top entry since zap logger is wrapped by our own logger
-		options = []zap.Option{zap.AddCallerSkip(1)}
+		options = []zap.Option{zap.AddCallerSkip(4)}
 	)
 
 	// Define a consistent encoder configuration
@@ -141,34 +141,73 @@ func newZapLogger(environment env.Environment) (*Logger, error) {
 		CallerKey:     "caller",
 		FunctionKey:   zapcore.OmitKey, // Hide function name for brevity
 		MessageKey:    MessageKey,
-		StacktraceKey: StacktraceKey,
-		//LineEnding:     zapcore.DefaultLineEnding,
-		EncodeTime:     zapcore.ISO8601TimeEncoder,  // Use human-readable timestamp format
-		EncodeLevel:    zapcore.CapitalLevelEncoder, // INFO, WARN, ERROR, etc.
-		EncodeDuration: zapcore.SecondsDurationEncoder,
-		EncodeCaller:   zapcore.ShortCallerEncoder, // Short file path
+		StacktraceKey: "stacktrace",
+		EncodeTime:    zapcore.ISO8601TimeEncoder,  // Use human-readable timestamp format
+		EncodeLevel:   zapcore.CapitalLevelEncoder, // INFO, WARN, ERROR, etc.
+		EncodeCaller:  zapcore.ShortCallerEncoder,  // Short file path
 	}
 
 	// Configure logging based on the environment
 	switch environment {
 	case env.EnvironmentLocal:
 		config = zap.NewDevelopmentConfig()
+		config.EncoderConfig.MessageKey = MessageKey
 		config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 		options = append(options, zap.AddStacktrace(zap.ErrorLevel))
 
 	case env.EnvironmentLocalDocker, env.EnvironmentDevelopment, env.EnvironmentStaging:
 		// Development/Staging: JSON logs for Datadog ingestion
-		config = zap.NewProductionConfig()
+		config = zap.NewDevelopmentConfig()
 		config.EncoderConfig = encoderConfig
+		//config.Encoding = StringJSONEncoderName
 		options = append(options, zap.AddStacktrace(zap.ErrorLevel))
 
 	case env.EnvironmentProduction:
 		// Production: JSON logs with structured metadata
 		config = zap.NewProductionConfig()
 		config.EncoderConfig = encoderConfig
+		//config.Encoding = StringJSONEncoderName
 		config.Level.SetLevel(zap.InfoLevel)
 		options = append(options, zap.AddStacktrace(zap.ErrorLevel))
 	}
+
+	//
+	//// Define a consistent encoder configuration
+	//encoderConfig := zapcore.EncoderConfig{
+	//	TimeKey:       "timestamp",
+	//	LevelKey:      "level",
+	//	NameKey:       "logger",
+	//	CallerKey:     "caller",
+	//	FunctionKey:   zapcore.OmitKey, // Hide function name for brevity
+	//	MessageKey:    MessageKey,
+	//	StacktraceKey: StacktraceKey,
+	//	//LineEnding:     zapcore.DefaultLineEnding,
+	//	EncodeTime:     zapcore.ISO8601TimeEncoder,  // Use human-readable timestamp format
+	//	EncodeLevel:    zapcore.CapitalLevelEncoder, // INFO, WARN, ERROR, etc.
+	//	EncodeDuration: zapcore.SecondsDurationEncoder,
+	//	EncodeCaller:   zapcore.ShortCallerEncoder, // Short file path
+	//}
+	//
+	//// Configure logging based on the environment
+	//switch environment {
+	//case env.EnvironmentLocal:
+	//	config = zap.NewDevelopmentConfig()
+	//	config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	//	options = append(options, zap.AddStacktrace(zap.ErrorLevel))
+	//
+	//case env.EnvironmentLocalDocker, env.EnvironmentDevelopment, env.EnvironmentStaging:
+	//	// Development/Staging: JSON logs for Datadog ingestion
+	//	config = zap.NewProductionConfig()
+	//	config.EncoderConfig = encoderConfig
+	//	options = append(options, zap.AddStacktrace(zap.ErrorLevel))
+	//
+	//case env.EnvironmentProduction:
+	//	// Production: JSON logs with structured metadata
+	//	config = zap.NewProductionConfig()
+	//	config.EncoderConfig = encoderConfig
+	//	config.Level.SetLevel(zap.InfoLevel)
+	//	options = append(options, zap.AddStacktrace(zap.ErrorLevel))
+	//}
 
 	// Build the logger
 	z, err := config.Build(options...)
