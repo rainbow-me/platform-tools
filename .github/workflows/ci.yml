@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup Go
-        uses: rainbow-me/github-setup-go-action@v1
+        uses: rainbow-me/github-setup-go-action@v2
         with:
           personal-access-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           cache-key: test
