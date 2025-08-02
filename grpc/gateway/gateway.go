@@ -188,14 +188,17 @@ func (g *Gateway) RegisterEndpoints() (*gin.Engine, error) {
 		return nil, errors.Join(validationErrs...)
 	}
 
-	// Register health check if enabled (before endpoints to avoid conflicts with wildcards)
+	// Register health check if enabled
 	if g.HealthServer != nil && g.HealthEndpoint != "" {
 		g.Engine.GET(g.HealthEndpoint, g.HealthHandler())
 		g.Logger.Info("Registered health check endpoint", zap.String("path", g.HealthEndpoint))
 	}
 
-	// Register Endpoints for each prefix
+	// Register non-root endpoints
 	for prefix, registers := range g.Endpoints {
+		if prefix == "/" {
+			continue
+		}
 		// Create the ServeMux with options
 		gwMux := runtime.NewServeMux(
 			append([]runtime.ServeMuxOption{
@@ -227,12 +230,47 @@ func (g *Gateway) RegisterEndpoints() (*gin.Engine, error) {
 		prefixGroup.Any("/*path", g.stripPrefixHandler(stripPrefix, gwMux))
 
 		// Log the registration
-		g.Logger.Info("Registered endpoint", zap.String("prefix", prefix))
+		g.Logger.Info("Registered endpoint",
+			zap.String("prefix", prefix),
+		)
 	}
 
 	// Register custom HTTP handlers
 	for _, registrar := range g.CustomRegistrars {
 		registrar(g.Engine)
+	}
+
+	// Register root endpoint if present, using NoRoute to avoid conflicts
+	if registers, ok := g.Endpoints["/"]; ok {
+		// Create the ServeMux with options
+		gwMux := runtime.NewServeMux(
+			append([]runtime.ServeMuxOption{
+				runtime.WithErrorHandler(g.ProtoMessageErrorHandler),
+				runtime.WithIncomingHeaderMatcher(g.HeaderMatcher),
+				runtime.WithMetadata(g.MetadataAnnotator),
+				runtime.WithForwardResponseOption(g.ResponseHeaderHandler),
+				runtime.WithOutgoingHeaderMatcher(g.OutgoingHeaderMatcher),
+			}, g.GatewayMuxOptions...)...,
+		)
+
+		// Register each endpoint handler
+		for _, register := range registers {
+			if err := register(context.Background(), gwMux, g.ServerAddress, g.ServerDialOptions); err != nil {
+				return nil, fmt.Errorf("failed to register endpoint for prefix /: %w", err)
+			}
+		}
+
+		// Wrap the mux as a Gin handler
+		gwHandler := gin.WrapH(gwMux)
+
+		// Apply middlewares and set as NoRoute handler
+		handlers := append(g.GinMiddlewares, gwHandler)
+		g.Engine.NoRoute(handlers...)
+
+		// Log the registration
+		g.Logger.Info("Registered endpoint",
+			zap.String("prefix", "/"),
+		)
 	}
 
 	return g.Engine, nil
