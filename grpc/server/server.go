@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
+	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
@@ -112,8 +113,8 @@ func WithGRPCServer(
 // WithGateway adds a dedicated HTTP server for the gRPC-REST gateway
 // It creates an HTTP server with a mux configured solely for the gateway.
 func WithGateway(name, port string, httpOpts []HTTPConfigOption, gatewayOpts ...gateway.Option) Option {
-	mux := http.NewServeMux()
-	_, err := gateway.NewGateway(append([]gateway.Option{gateway.WithMux(mux)}, gatewayOpts...)...)
+	engine := gin.New()
+	_, err := gateway.NewGateway(append([]gateway.Option{gateway.WithEngine(engine)}, gatewayOpts...)...)
 	if err != nil {
 		return func(_ *Server) error {
 			return fmt.Errorf("failed to create gateway: %w", err)
@@ -122,7 +123,7 @@ func WithGateway(name, port string, httpOpts []HTTPConfigOption, gatewayOpts ...
 	config := HTTPConfig{
 		Name:    name,
 		Address: normalizePort(port),
-		Handler: mux,
+		Handler: engine,
 	}
 	for _, opt := range httpOpts {
 		opt(&config)
