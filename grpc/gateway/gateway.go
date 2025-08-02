@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/rainbow-me/platform-tools/common/logger"
 	"net/http"
 	"strings"
 	"time"
@@ -19,6 +18,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/rainbow-me/platform-tools/common/logger"
 	internalmetadata "github.com/rainbow-me/platform-tools/grpc/metadata"
 )
 
@@ -258,7 +258,8 @@ func (g *Gateway) HealthHandler() gin.HandlerFunc {
 	}
 }
 
-// stripPrefixHandler creates a Gin handler that strips the prefix from the path before delegating to the given http.Handler
+// stripPrefixHandler creates a Gin handler that strips the prefix
+// from the path before delegating to the given http.Handler
 func (g *Gateway) stripPrefixHandler(strip string, h http.Handler) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Strip the prefix from the path
