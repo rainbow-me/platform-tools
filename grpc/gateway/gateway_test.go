@@ -3,13 +3,13 @@ package gateway_test
 import (
 	"context"
 	"errors"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -92,9 +92,9 @@ func TestNewGateway(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "with request logging",
+			name: "with middleware ",
 			options: []gateway.Option{
-				gateway.WithRequestLogging(),
+				gateway.WithGinMiddlewares(),
 				gateway.WithEndpointRegistration("/api/",
 					func(_ context.Context, _ *runtime.ServeMux, _ string, _ []grpc.DialOption) error {
 						return nil
@@ -102,6 +102,19 @@ func TestNewGateway(t *testing.T) {
 			},
 			wantErr: false,
 		},
+
+		{
+			name: "with http handlers",
+			options: []gateway.Option{
+				gateway.WithHTTPHandlers(),
+				gateway.WithEndpointRegistration("/api/",
+					func(_ context.Context, _ *runtime.ServeMux, _ string, _ []grpc.DialOption) error {
+						return nil
+					}),
+			},
+			wantErr: false,
+		},
+
 		{
 			name: "with headers to forward",
 			options: []gateway.Option{
@@ -282,38 +295,162 @@ func TestGateway_responseHeaderHandler_Trailers(t *testing.T) {
 	assert.Equal(t, "value", w.Header().Get("X-Trailer"))
 }
 
-func TestGateway_wrapHandler(t *testing.T) {
-	g := &gateway.Gateway{Logger: test.NewLogger(t)}
-
-	handler := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
-	wrapped := g.WrapHandler(handler)
-
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	w := httptest.NewRecorder()
-	wrapped.ServeHTTP(w, req)
-}
-
 func TestGateway_registerEndpoints(t *testing.T) {
-	//logger := logger.NoOp()
+	// Dummy generated register function simulation
+	dummyGeneratedRegister := func(
+		_ context.Context,
+		mux *runtime.ServeMux,
+		_ string,
+		_ []grpc.DialOption,
+	) error {
+		// Simulate registering a handler as in generated code
+		// Here, we manually add a test handler to mimic a proxied endpoint
+		err := mux.HandlePath(
+			"GET",
+			"/test",
+			func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
+				_, _ = w.Write([]byte(r.URL.Path))
+			})
+		if err != nil {
+			return err
+		}
+		// In real generated code, this would register multiple handlers via RegisterHandlerFromEndpoint or similar,
+		// but for test, we just add one dummy handler
+		return nil
+	}
+
 	g := &gateway.Gateway{
 		Endpoints: map[string][]gateway.RegisterFunc{
-			"/api/": {func(_ context.Context, _ *runtime.ServeMux, _ string, _ []grpc.DialOption) error {
-				return nil
-			}},
+			"/api/": {dummyGeneratedRegister},
 		},
-		Engine:               gin.New(),
-		ServerAddress:        "localhost:9090",
-		ServerDialOptions:    []grpc.DialOption{},
-		GatewayMuxOptions:    []runtime.ServeMuxOption{},
-		HeaderConfig:         internalmetadata.HeaderConfig{HeadersToForward: []string{}},
-		Logger:               logger.NoOp(),
-		Timeout:              5 * time.Second,
-		EnableRequestLogging: true,
+		Engine:            gin.New(),
+		ServerAddress:     "localhost:9090",
+		ServerDialOptions: []grpc.DialOption{},
+		GatewayMuxOptions: []runtime.ServeMuxOption{},
+		HeaderConfig:      internalmetadata.HeaderConfig{HeadersToForward: []string{}},
+		Logger:            logger.NoOp(),
+		HealthServer:      health.NewServer(),
+		HealthEndpoint:    "/health",
+		Timeout:           5 * time.Second,
+	}
+
+	engine, err := g.RegisterEndpoints()
+	require.NoError(t, err)
+	assert.NotNil(t, engine)
+
+	// Test prefix stripping
+	req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
+	w := httptest.NewRecorder()
+	engine.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "/test", w.Body.String())
+}
+
+func TestGateway_registerEndpoints_1(t *testing.T) {
+	// Dummy generated register function simulation
+	dummyGeneratedRegister := func(
+		_ context.Context,
+		mux *runtime.ServeMux,
+		_ string,
+		_ []grpc.DialOption,
+	) error {
+		// Simulate registering a handler as in generated code
+		// Here, we manually add a test handler to mimic a proxied endpoint
+		err := mux.HandlePath(
+			http.MethodGet,
+			"/test",
+			func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
+				raw := r.URL.RawPath
+				if raw == "" {
+					raw = "empty"
+				}
+				_, _ = w.Write([]byte(r.URL.Path + "|" + raw))
+			})
+		if err != nil {
+			return err
+		}
+		// In real generated code, this would register multiple handlers via RegisterHandlerFromEndpoint or similar,
+		// but for test, we just add one dummy handler
+		return nil
+	}
+
+	g := &gateway.Gateway{
+		Endpoints: map[string][]gateway.RegisterFunc{
+			"/api/": {dummyGeneratedRegister},
+		},
+		Engine:            gin.New(),
+		ServerAddress:     "localhost:9090",
+		ServerDialOptions: []grpc.DialOption{},
+		GatewayMuxOptions: []runtime.ServeMuxOption{},
+		HeaderConfig:      internalmetadata.HeaderConfig{HeadersToForward: []string{}},
+		Logger:            logger.NoOp(),
+		HealthServer:      health.NewServer(),
+		HealthEndpoint:    "/health",
+		Timeout:           5 * time.Second,
 	}
 
 	mux, err := g.RegisterEndpoints()
 	require.NoError(t, err)
 	assert.NotNil(t, mux)
+
+	tests := []struct {
+		name         string
+		path         string
+		rawPath      string
+		expectedCode int
+		expectedBody string
+	}{
+		{
+			name:         "basic path stripping without rawpath",
+			path:         "/api/test",
+			rawPath:      "",
+			expectedCode: http.StatusOK,
+			expectedBody: "/test|empty",
+		},
+		{
+			name:         "path and rawpath stripping with encoding",
+			path:         "/api/te%73t",
+			rawPath:      "/api/te%73t",
+			expectedCode: http.StatusOK,
+			expectedBody: "/test|/te%73t",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
+			req.URL.RawPath = tt.rawPath
+			w := httptest.NewRecorder()
+			mux.ServeHTTP(w, req)
+			assert.Equal(t, tt.expectedCode, w.Code)
+			assert.Equal(t, tt.expectedBody, w.Body.String())
+		})
+	}
+}
+
+func TestGateway_CustomRegistrars(t *testing.T) {
+	dummyRegister := func(_ context.Context, _ *runtime.ServeMux, _ string, _ []grpc.DialOption) error {
+		return nil
+	}
+
+	customRegistrar := func(engine *gin.Engine) {
+		engine.GET("/custom", func(c *gin.Context) {
+			c.String(http.StatusOK, "custom response")
+		})
+	}
+
+	engine, err := gateway.NewGateway(
+		gateway.WithEndpointRegistration("/api/", dummyRegister),
+		gateway.WithHTTPHandlers(customRegistrar),
+	)
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodGet, "/custom", nil)
+	w := httptest.NewRecorder()
+	engine.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "custom response", w.Body.String())
 }
 
 func TestGateway_registerEndpoints_InvalidPrefix(t *testing.T) {
@@ -357,18 +494,18 @@ func TestGateway_Options(t *testing.T) {
 		setupOpt func() (gateway.Option, interface{})
 		verify   func(t *testing.T, g *gateway.Gateway, expected interface{})
 	}{
-		//{
-		//	name: "WithMux",
-		//	setupOpt: func() (gateway.Option, interface{}) {
-		//		customMux := http.NewServeMux()
-		//		return gateway.WithMux(customMux), customMux
-		//	},
-		//	verify: func(t *testing.T, g *gateway.Gateway, expected interface{}) {
-		//		expectedMux, ok := expected.(*http.ServeMux)
-		//		assert.True(t, ok)
-		//		assert.Equal(t, expectedMux, g.Mux)
-		//	},
-		//},
+		{
+			name: "WithGinEngine",
+			setupOpt: func() (gateway.Option, interface{}) {
+				customMux := gin.New()
+				return gateway.WithEngine(customMux), customMux
+			},
+			verify: func(t *testing.T, g *gateway.Gateway, expected interface{}) {
+				expectedMux, ok := expected.(*gin.Engine)
+				assert.True(t, ok)
+				assert.Equal(t, expectedMux, g.Engine)
+			},
+		},
 		{
 			name: "WithGatewayOptions",
 			setupOpt: func() (gateway.Option, interface{}) {
@@ -478,7 +615,7 @@ func (f *faultyRecorder) Write([]byte) (int, error) {
 	return 0, errors.New("encode failed")
 }
 
-func TestGateway_healthHandler_1(t *testing.T) {
+func TestGateway_healthHandler(t *testing.T) {
 	tests := []struct {
 		name           string
 		service        string
@@ -497,7 +634,7 @@ func TestGateway_healthHandler_1(t *testing.T) {
 			},
 			expectedCode:   http.StatusOK,
 			expectedBody:   `{"status":"SERVING"}`,
-			expectedHeader: "application/json",
+			expectedHeader: "application/json; charset=utf-8",
 		},
 		{
 			name:    "not serving",
@@ -507,27 +644,16 @@ func TestGateway_healthHandler_1(t *testing.T) {
 			},
 			expectedCode:   http.StatusOK,
 			expectedBody:   `{"status":"NOT_SERVING"}`,
-			expectedHeader: "application/json",
+			expectedHeader: "application/json; charset=utf-8",
 		},
 		{
 			name:           "unknown service error",
 			service:        "unknown",
 			setupStatus:    map[string]grpc_health_v1.HealthCheckResponse_ServingStatus{}, // No status set
 			expectedCode:   http.StatusServiceUnavailable,
-			expectedBody:   "rpc error: code = NotFound desc = unknown service",
-			expectedHeader: "text/plain; charset=utf-8",
+			expectedBody:   `{"error":"rpc error: code = NotFound desc = unknown service"}`,
+			expectedHeader: "application/json; charset=utf-8",
 			expectErrLog:   true,
-		},
-		{
-			name:    "encode error",
-			service: "",
-			setupStatus: map[string]grpc_health_v1.HealthCheckResponse_ServingStatus{
-				"": grpc_health_v1.HealthCheckResponse_SERVING,
-			},
-			forceEncodeErr: true,
-			expectedCode:   http.StatusOK,
-			expectedBody:   "",
-			expectedHeader: "application/json",
 		},
 	}
 
@@ -545,22 +671,22 @@ func TestGateway_healthHandler_1(t *testing.T) {
 			handler := g.HealthHandler()
 
 			req := httptest.NewRequest(http.MethodGet, "/health?service="+tt.service, nil)
-			var w http.ResponseWriter = httptest.NewRecorder()
+			w := httptest.NewRecorder()
 			if tt.forceEncodeErr {
 				fw := &faultyRecorder{ResponseRecorder: httptest.NewRecorder()}
-				w = fw
+				w = fw.ResponseRecorder // Use the underlying recorder for assertions
+				c, _ := gin.CreateTestContext(fw)
+				c.Request = req
+				handler(c)
+			} else {
+				c, _ := gin.CreateTestContext(w)
+				c.Request = req
+				handler(c)
 			}
 
-			handler(w, req)
-
-			rec, ok := w.(*httptest.ResponseRecorder)
-			if !ok {
-				rec = w.(*faultyRecorder).ResponseRecorder
-			}
-
-			assert.Equal(t, tt.expectedCode, rec.Code)
-			assert.Equal(t, tt.expectedBody, strings.TrimSpace(rec.Body.String()))
-			assert.Equal(t, tt.expectedHeader, rec.Header().Get("Content-Type"))
+			assert.Equal(t, tt.expectedCode, w.Code)
+			assert.Equal(t, tt.expectedBody, strings.TrimSpace(w.Body.String()))
+			assert.Equal(t, tt.expectedHeader, w.Header().Get("Content-Type"))
 		})
 	}
 }
