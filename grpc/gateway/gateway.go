@@ -171,13 +171,19 @@ func NewGateway(options ...Option) (*gin.Engine, error) {
 }
 
 // RegisterEndpoints iterates through each prefix and registers its handlers
-// to the REST Gateway
+// to the REST Gateway. This function is responsible for setting up the HTTP routing
+// using Gin, including validation of prefixes, registration of health checks,
+// custom handlers, and the gRPC-Gateway endpoints. It handles special cases like
+// the root prefix ("/") to avoid routing conflicts with specific paths (e.g., health endpoint).
+// The order of operations is crucial: health and custom handlers first for priority,
+// then non-root prefixes, and finally the root prefix using NoRoute for fallback handling.
 func (g *Gateway) RegisterEndpoints() (*gin.Engine, error) {
+	// Early exit if no endpoints are provided to register
 	if len(g.Endpoints) == 0 {
 		return nil, ErrNoEndpointsRegistered
 	}
 
-	// Validate all prefixes first
+	// Validate all prefixes first to catch configuration errors early
 	var validationErrs []error
 	for prefix := range g.Endpoints {
 		if err := g.ValidatePrefix(prefix); err != nil {
@@ -188,18 +194,29 @@ func (g *Gateway) RegisterEndpoints() (*gin.Engine, error) {
 		return nil, errors.Join(validationErrs...)
 	}
 
-	// Register health check if enabled
+	// Register health check if enabled. This is done first to ensure the specific
+	// health path (e.g., "/_healthz") takes precedence over any wildcard routes.
 	if g.HealthServer != nil && g.HealthEndpoint != "" {
 		g.Engine.GET(g.HealthEndpoint, g.HealthHandler())
 		g.Logger.Info("Registered health check endpoint", zap.String("path", g.HealthEndpoint))
 	}
 
-	// Register non-root endpoints
+	// Register custom HTTP handlers provided via WithHttpHandlers. These are added
+	// before gateway endpoints to allow users to override or add routes that might
+	// conflict with or complement the gateway's paths.
+	for _, registrar := range g.CustomRegistrars {
+		registrar(g.Engine)
+	}
+
+	// Register non-root endpoints. We loop through all prefixes except "/" here
+	// to handle them with standard Group and Any routing in Gin.
 	for prefix, registers := range g.Endpoints {
 		if prefix == "/" {
-			continue
+			continue // Skip root; handled separately below to avoid wildcard conflicts
 		}
-		// Create the ServeMux with options
+
+		// Create a new ServeMux for this prefix, configured with error handling,
+		// header matching, metadata annotation, and other options.
 		gwMux := runtime.NewServeMux(
 			append([]runtime.ServeMuxOption{
 				runtime.WithErrorHandler(g.ProtoMessageErrorHandler),
@@ -210,39 +227,36 @@ func (g *Gateway) RegisterEndpoints() (*gin.Engine, error) {
 			}, g.GatewayMuxOptions...)...,
 		)
 
-		// Register each endpoint handler
+		// Register the generated gRPC-Gateway handlers for this prefix.
+		// These are typically functions like RegisterYourServiceHandlerFromEndpoint.
 		for _, register := range registers {
 			if err := register(context.Background(), gwMux, g.ServerAddress, g.ServerDialOptions); err != nil {
 				return nil, fmt.Errorf("failed to register endpoint for prefix %s: %w", prefix, err)
 			}
 		}
 
-		// Create a Gin group for the prefix (without trailing slash)
+		// Create a Gin router group for the prefix (trim trailing slash for Gin compatibility).
 		prefixGroup := g.Engine.Group(strings.TrimSuffix(prefix, "/"))
 
-		// Apply custom Gin middlewares to this group
+		// Apply any user-provided Gin middlewares to this group (e.g., auth, logging).
 		prefixGroup.Use(g.GinMiddlewares...)
 
-		// Calculate the strip prefix (without trailing slash)
+		// Calculate the prefix to strip from incoming paths before proxying to gRPC.
 		stripPrefix := prefix[:len(prefix)-1]
 
-		// Register the catch-all handler with stripping
+		// Register a catch-all wildcard route for all methods under the prefix,
+		// using the stripPrefixHandler to adjust the path and delegate to the ServeMux.
 		prefixGroup.Any("/*path", g.stripPrefixHandler(stripPrefix, gwMux))
 
-		// Log the registration
-		g.Logger.Info("Registered endpoint",
-			zap.String("prefix", prefix),
-		)
+		// Log the successful registration for debugging and monitoring.
+		g.Logger.Info("Registered endpoint", zap.String("prefix", prefix))
 	}
 
-	// Register custom HTTP handlers
-	for _, registrar := range g.CustomRegistrars {
-		registrar(g.Engine)
-	}
-
-	// Register root endpoint if present, using NoRoute to avoid conflicts
+	// Handle the root prefix ("/") separately if present. We use Gin's NoRoute
+	// to set it as a fallback handler, ensuring it doesn't conflict with specific
+	// routes like health or custom handlers added earlier.
 	if registers, ok := g.Endpoints["/"]; ok {
-		// Create the ServeMux with options
+		// Create a new ServeMux for the root prefix.
 		gwMux := runtime.NewServeMux(
 			append([]runtime.ServeMuxOption{
 				runtime.WithErrorHandler(g.ProtoMessageErrorHandler),
@@ -253,26 +267,29 @@ func (g *Gateway) RegisterEndpoints() (*gin.Engine, error) {
 			}, g.GatewayMuxOptions...)...,
 		)
 
-		// Register each endpoint handler
+		// Register the generated handlers for the root prefix.
 		for _, register := range registers {
 			if err := register(context.Background(), gwMux, g.ServerAddress, g.ServerDialOptions); err != nil {
 				return nil, fmt.Errorf("failed to register endpoint for prefix /: %w", err)
 			}
 		}
 
-		// Wrap the mux as a Gin handler
+		// Wrap the ServeMux as a Gin handler func.
 		gwHandler := gin.WrapH(gwMux)
 
-		// Apply middlewares and set as NoRoute handler
-		handlers := append(g.GinMiddlewares, gwHandler)
+		// Prepare the handler chain: middlewares first, then the gateway handler.
+		var handlers []gin.HandlerFunc
+		handlers = append(handlers, g.GinMiddlewares...)
+		handlers = append(handlers, gwHandler)
+
+		// Set the chain as the NoRoute handler for unmatched paths.
 		g.Engine.NoRoute(handlers...)
 
-		// Log the registration
-		g.Logger.Info("Registered endpoint",
-			zap.String("prefix", "/"),
-		)
+		// Log the successful registration.
+		g.Logger.Info("Registered endpoint", zap.String("prefix", "/"))
 	}
 
+	// Return the fully configured Gin engine.
 	return g.Engine, nil
 }
 
