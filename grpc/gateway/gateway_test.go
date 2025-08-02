@@ -3,6 +3,7 @@ package gateway_test
 import (
 	"context"
 	"errors"
+	"github.com/gin-gonic/gin"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -293,19 +294,19 @@ func TestGateway_wrapHandler(t *testing.T) {
 }
 
 func TestGateway_registerEndpoints(t *testing.T) {
-	logger := logger.NoOp()
+	//logger := logger.NoOp()
 	g := &gateway.Gateway{
 		Endpoints: map[string][]gateway.RegisterFunc{
 			"/api/": {func(_ context.Context, _ *runtime.ServeMux, _ string, _ []grpc.DialOption) error {
 				return nil
 			}},
 		},
-		Mux:                  http.NewServeMux(),
+		Engine:               gin.New(),
 		ServerAddress:        "localhost:9090",
 		ServerDialOptions:    []grpc.DialOption{},
 		GatewayMuxOptions:    []runtime.ServeMuxOption{},
 		HeaderConfig:         internalmetadata.HeaderConfig{HeadersToForward: []string{}},
-		Logger:               logger,
+		Logger:               logger.NoOp(),
 		Timeout:              5 * time.Second,
 		EnableRequestLogging: true,
 	}
@@ -356,18 +357,18 @@ func TestGateway_Options(t *testing.T) {
 		setupOpt func() (gateway.Option, interface{})
 		verify   func(t *testing.T, g *gateway.Gateway, expected interface{})
 	}{
-		{
-			name: "WithMux",
-			setupOpt: func() (gateway.Option, interface{}) {
-				customMux := http.NewServeMux()
-				return gateway.WithMux(customMux), customMux
-			},
-			verify: func(t *testing.T, g *gateway.Gateway, expected interface{}) {
-				expectedMux, ok := expected.(*http.ServeMux)
-				assert.True(t, ok)
-				assert.Equal(t, expectedMux, g.Mux)
-			},
-		},
+		//{
+		//	name: "WithMux",
+		//	setupOpt: func() (gateway.Option, interface{}) {
+		//		customMux := http.NewServeMux()
+		//		return gateway.WithMux(customMux), customMux
+		//	},
+		//	verify: func(t *testing.T, g *gateway.Gateway, expected interface{}) {
+		//		expectedMux, ok := expected.(*http.ServeMux)
+		//		assert.True(t, ok)
+		//		assert.Equal(t, expectedMux, g.Mux)
+		//	},
+		//},
 		{
 			name: "WithGatewayOptions",
 			setupOpt: func() (gateway.Option, interface{}) {
