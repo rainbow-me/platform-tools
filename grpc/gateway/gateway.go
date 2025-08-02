@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/rainbow-me/platform-tools/common/logger"
 	"net/http"
 	"strings"
 	"time"
@@ -18,7 +19,6 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/rainbow-me/platform-tools/common/logger"
 	internalmetadata "github.com/rainbow-me/platform-tools/grpc/metadata"
 )
 
@@ -188,12 +188,6 @@ func (g *Gateway) RegisterEndpoints() (*gin.Engine, error) {
 		return nil, errors.Join(validationErrs...)
 	}
 
-	// Register health check if enabled (before endpoints to avoid conflicts with wildcards)
-	if g.HealthServer != nil && g.HealthEndpoint != "" {
-		g.Engine.GET(g.HealthEndpoint, g.HealthHandler())
-		g.Logger.Info("Registered health check endpoint", zap.String("path", g.HealthEndpoint))
-	}
-
 	// Register Endpoints for each prefix
 	for prefix, registers := range g.Endpoints {
 		// Create the ServeMux with options
@@ -232,6 +226,12 @@ func (g *Gateway) RegisterEndpoints() (*gin.Engine, error) {
 		)
 	}
 
+	// Register health check if enabled (after endpoints to prioritize specific route over wildcards)
+	if g.HealthServer != nil && g.HealthEndpoint != "" {
+		g.Engine.GET(g.HealthEndpoint, g.HealthHandler())
+		g.Logger.Info("Registered health check endpoint", zap.String("path", g.HealthEndpoint))
+	}
+
 	// Register custom HTTP handlers
 	for _, registrar := range g.CustomRegistrars {
 		registrar(g.Engine)
@@ -260,8 +260,7 @@ func (g *Gateway) HealthHandler() gin.HandlerFunc {
 	}
 }
 
-// stripPrefixHandler creates a Gin handler that strips the prefix
-// from the path before delegating to the given http.Handler
+// stripPrefixHandler creates a Gin handler that strips the prefix from the path before delegating to the given http.Handler
 func (g *Gateway) stripPrefixHandler(strip string, h http.Handler) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Strip the prefix from the path
