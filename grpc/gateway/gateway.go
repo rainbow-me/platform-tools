@@ -188,6 +188,12 @@ func (g *Gateway) RegisterEndpoints() (*gin.Engine, error) {
 		return nil, errors.Join(validationErrs...)
 	}
 
+	// Register health check if enabled (before endpoints to avoid conflicts with wildcards)
+	if g.HealthServer != nil && g.HealthEndpoint != "" {
+		g.Engine.GET(g.HealthEndpoint, g.HealthHandler())
+		g.Logger.Info("Registered health check endpoint", zap.String("path", g.HealthEndpoint))
+	}
+
 	// Register Endpoints for each prefix
 	for prefix, registers := range g.Endpoints {
 		// Create the ServeMux with options
@@ -221,15 +227,7 @@ func (g *Gateway) RegisterEndpoints() (*gin.Engine, error) {
 		prefixGroup.Any("/*path", g.stripPrefixHandler(stripPrefix, gwMux))
 
 		// Log the registration
-		g.Logger.Info("Registered endpoint",
-			zap.String("prefix", prefix),
-		)
-	}
-
-	// Register health check if enabled (after endpoints to prioritize specific route over wildcards)
-	if g.HealthServer != nil && g.HealthEndpoint != "" {
-		g.Engine.GET(g.HealthEndpoint, g.HealthHandler())
-		g.Logger.Info("Registered health check endpoint", zap.String("path", g.HealthEndpoint))
+		g.Logger.Info("Registered endpoint", zap.String("prefix", prefix))
 	}
 
 	// Register custom HTTP handlers
