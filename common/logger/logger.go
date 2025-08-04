@@ -85,6 +85,30 @@ func (l *Logger) Errorf(msg string, v ...any) {
 	}
 }
 
+func (l *Logger) Fatal(msg string, v ...any) {
+	if len(v) > 0 {
+		l.zap.Sugar().Fatalf(msg, v...)
+	} else {
+		l.zap.Fatal(msg)
+	}
+}
+
+func (l *Logger) Panic(msg string, v ...any) {
+	if len(v) > 0 {
+		l.zap.Sugar().Panicf(msg, v...)
+	} else {
+		l.zap.Panic(msg)
+	}
+}
+
+func (l *Logger) DPanic(msg string, v ...any) {
+	if len(v) > 0 {
+		l.zap.Sugar().DPanicf(msg, v...)
+	} else {
+		l.zap.DPanic(msg)
+	}
+}
+
 func (l *Logger) With(fields ...Field) *Logger {
 	return &Logger{zap: l.zap.With(fields...)}
 }
