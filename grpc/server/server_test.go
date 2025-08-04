@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -116,7 +117,7 @@ func TestNewServer(t *testing.T) {
 			opts: []server.Option{
 				server.WithGateway("gateway", ":0",
 					nil,
-					gateway.WithMux(http.NewServeMux()),
+					gateway.WithEngine(gin.New()),
 					gateway.WithEndpointRegistration("/test/", test.RegisterHelloServiceHandlerFromEndpoint),
 				),
 			},

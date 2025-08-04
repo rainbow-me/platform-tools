@@ -13,7 +13,6 @@ for external clients.
   namespacing.
 - **Header Propagation**: Control which HTTP headers are forwarded to gRPC metadata and vice versa.
 - **Custom Error and Response Handling**: Built-in handlers for gRPC errors and metadata in HTTP responses.
-- **Request Logging Middleware**: Optional logging for HTTP requests (development only).
 - **Shared gRPC Connection**: Efficiently shares a single gRPC connection across registrations (in optimized versions).
 - **Validation and Defaults**: Sensible defaults with prefix validation to prevent common misconfigurations.
 
@@ -28,25 +27,24 @@ for external clients.
 package main
 
 import (
-	"net/http"
+  "net/http"
 
-	"github.com/yourusername/backend-service-template/internal/gateway"
-	// Import your generated pb package
-	"yourpbpackage"
+  "github.com/yourusername/backend-service-template/internal/gateway"
+  // Import your generated pb package
+  "yourpbpackage"
 )
 
 func main() {
-	mux, err := gateway.NewGateway(
-		gateway.WithServerAddress("localhost:9090"),
-		gateway.WithEndpointRegistration("/api/v1/", yourpbpackage.RegisterYourServiceHandler),
-		gateway.WithRequestLogging(), // Optional: Enable for dev
-		gateway.WithHeadersToForward("Authorization", "X-Request-ID"),
-	)
-	if err != nil {
-		panic(err)
-	}
+  mux, err := gateway.NewGateway(
+    gateway.WithServerAddress("localhost:9090"),
+    gateway.WithEndpointRegistration("/api/v1/", yourpbpackage.RegisterYourServiceHandler),
+    gateway.WithHeadersToForward("Authorization", "X-Request-ID"),
+  )
+  if err != nil {
+    panic(err)
+  }
 
-	http.ListenAndServe(":8080", mux)
+  http.ListenAndServe(":8080", mux)
 }
 ```
 
@@ -67,28 +65,10 @@ Use functional options to customize:
 ### Register Multiple Services
 
 ```go
-mux, err := gateway.NewGateway(
-gateway.WithEndpointRegistration("/user/v1/", pb.RegisterUserServiceHandler),
-gateway.WithEndpointRegistration("/payment/v1/", pb.RegisterPaymentServiceHandler),
+s, err := gateway.NewGateway(
+  gateway.WithEndpointRegistration("/user/v1/", pb.RegisterUserServiceHandler),
+  gateway.WithEndpointRegistration("/payment/v1/", pb.RegisterPaymentServiceHandler),
 )
 ```
 
 - User endpoints at `/user/v1/...`, payments at `/payment/v1/...`.
-
-### Custom Header Forwarding
-
-Forward specific headers to gRPC:
-
-```go
-gateway.WithHeadersToForward("X-User-ID", "X-Session-Token")
-```
-
-These will be converted to lowercase gRPC metadata keys.
-
-### Enabling Request Logging
-
-```go
-gateway.WithRequestLogging()
-```
-
-Logs method, path, duration, and remote address for each HTTP request. Use only in development.
