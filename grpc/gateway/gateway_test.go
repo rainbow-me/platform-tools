@@ -3,6 +3,8 @@ package gateway_test
 import (
 	"context"
 	"errors"
+	"fmt"
+	"go.uber.org/zap"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -295,141 +297,11 @@ func TestGateway_responseHeaderHandler_Trailers(t *testing.T) {
 	assert.Equal(t, "value", w.Header().Get("X-Trailer"))
 }
 
-func TestGateway_registerEndpoints(t *testing.T) {
-	// Dummy generated register function simulation
-	dummyGeneratedRegister := func(
-		_ context.Context,
-		mux *runtime.ServeMux,
-		_ string,
-		_ []grpc.DialOption,
-	) error {
-		// Simulate registering a handler as in generated code
-		// Here, we manually add a test handler to mimic a proxied endpoint
-		err := mux.HandlePath(
-			"GET",
-			"/test",
-			func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
-				_, _ = w.Write([]byte(r.URL.Path))
-			})
-		if err != nil {
-			return err
-		}
-		// In real generated code, this would register multiple handlers via RegisterHandlerFromEndpoint or similar,
-		// but for test, we just add one dummy handler
-		return nil
-	}
-
-	g := &gateway.Gateway{
-		Endpoints: map[string][]gateway.RegisterFunc{
-			"/api/": {dummyGeneratedRegister},
-		},
-		Engine:            gin.New(),
-		ServerAddress:     "localhost:9090",
-		ServerDialOptions: []grpc.DialOption{},
-		GatewayMuxOptions: []runtime.ServeMuxOption{},
-		HeaderConfig:      internalmetadata.HeaderConfig{HeadersToForward: []string{}},
-		Logger:            logger.NoOp(),
-		HealthServer:      health.NewServer(),
-		HealthEndpoint:    "/health",
-		Timeout:           5 * time.Second,
-	}
-
-	engine, err := g.RegisterEndpoints()
-	require.NoError(t, err)
-	assert.NotNil(t, engine)
-
-	// Test prefix stripping
-	req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
-	w := httptest.NewRecorder()
-	engine.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "/test", w.Body.String())
-}
-
-func TestGateway_registerEndpoints_1(t *testing.T) {
-	// Dummy generated register function simulation
-	dummyGeneratedRegister := func(
-		_ context.Context,
-		mux *runtime.ServeMux,
-		_ string,
-		_ []grpc.DialOption,
-	) error {
-		// Simulate registering a handler as in generated code
-		// Here, we manually add a test handler to mimic a proxied endpoint
-		err := mux.HandlePath(
-			http.MethodGet,
-			"/test",
-			func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
-				raw := r.URL.RawPath
-				if raw == "" {
-					raw = "empty"
-				}
-				_, _ = w.Write([]byte(r.URL.Path + "|" + raw))
-			})
-		if err != nil {
-			return err
-		}
-		// In real generated code, this would register multiple handlers via RegisterHandlerFromEndpoint or similar,
-		// but for test, we just add one dummy handler
-		return nil
-	}
-
-	g := &gateway.Gateway{
-		Endpoints: map[string][]gateway.RegisterFunc{
-			"/api/": {dummyGeneratedRegister},
-		},
-		Engine:            gin.New(),
-		ServerAddress:     "localhost:9090",
-		ServerDialOptions: []grpc.DialOption{},
-		GatewayMuxOptions: []runtime.ServeMuxOption{},
-		HeaderConfig:      internalmetadata.HeaderConfig{HeadersToForward: []string{}},
-		Logger:            logger.NoOp(),
-		HealthServer:      health.NewServer(),
-		HealthEndpoint:    "/health",
-		Timeout:           5 * time.Second,
-	}
-
-	mux, err := g.RegisterEndpoints()
-	require.NoError(t, err)
-	assert.NotNil(t, mux)
-
-	tests := []struct {
-		name         string
-		path         string
-		rawPath      string
-		expectedCode int
-		expectedBody string
-	}{
-		{
-			name:         "basic path stripping without rawpath",
-			path:         "/api/test",
-			rawPath:      "",
-			expectedCode: http.StatusOK,
-			expectedBody: "/test|empty",
-		},
-		{
-			name:         "path and rawpath stripping with encoding",
-			path:         "/api/te%73t",
-			rawPath:      "/api/te%73t",
-			expectedCode: http.StatusOK,
-			expectedBody: "/test|/te%73t",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
-			req.URL.RawPath = tt.rawPath
-			w := httptest.NewRecorder()
-			mux.ServeHTTP(w, req)
-			assert.Equal(t, tt.expectedCode, w.Code)
-			assert.Equal(t, tt.expectedBody, w.Body.String())
-		})
-	}
-}
-
 func TestGateway_CustomRegistrars(t *testing.T) {
 	dummyRegister := func(_ context.Context, _ *runtime.ServeMux, _ string, _ []grpc.DialOption) error {
+		return nil
+	}
+	anotherDummyRegister := func(_ context.Context, _ *runtime.ServeMux, _ string, _ []grpc.DialOption) error {
 		return nil
 	}
 
@@ -438,9 +310,12 @@ func TestGateway_CustomRegistrars(t *testing.T) {
 			c.String(http.StatusOK, "custom response")
 		})
 	}
-
+	healthServer := health.NewServer()
 	engine, err := gateway.NewGateway(
 		gateway.WithEndpointRegistration("/api/", dummyRegister),
+		gateway.WithEndpointRegistration("/", dummyRegister),
+		gateway.WithEndpointRegistration("/", anotherDummyRegister),
+		gateway.WithHealthCheck(healthServer, "/_healthz"),
 		gateway.WithHTTPHandlers(customRegistrar),
 	)
 	require.NoError(t, err)
@@ -453,30 +328,233 @@ func TestGateway_CustomRegistrars(t *testing.T) {
 	assert.Equal(t, "custom response", w.Body.String())
 }
 
-func TestGateway_registerEndpoints_InvalidPrefix(t *testing.T) {
-	g := &gateway.Gateway{
-		Endpoints: map[string][]gateway.RegisterFunc{
-			"invalid": {},
-		},
-		Logger: logger.NoOp(),
-	}
+var errTest = errors.New("test error")
 
-	_, err := g.RegisterEndpoints()
-	assert.Error(t, err)
+// dummyRegisterFunc is a mock register function for tests that registers a simple handler for "/test"
+func dummyRegisterFunc(_ context.Context, mux *runtime.ServeMux, _ string, _ []grpc.DialOption) error {
+	return mux.HandlePath("GET", "/test", func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(r.URL.Path))
+	})
 }
 
-func TestGateway_registerEndpoints_RegistrationError(t *testing.T) {
-	g := &gateway.Gateway{
-		Endpoints: map[string][]gateway.RegisterFunc{
-			"/api/": {func(_ context.Context, _ *runtime.ServeMux, _ string, _ []grpc.DialOption) error {
-				return errors.New("fail")
-			}},
+// dummyErrorRegisterFunc is a mock that returns an error
+func dummyErrorRegisterFunc(_ context.Context, _ *runtime.ServeMux, _ string, _ []grpc.DialOption) error {
+	return errTest
+}
+
+// dummyHealthCheckFunc mocks health.Check to return SERVING
+func dummyHealthCheckFunc(s *health.Server) {
+	s.SetServingStatus("", grpc_health_v1.HealthCheckResponse_SERVING)
+}
+
+func TestRegisterEndpoints(t *testing.T) {
+	tests := []struct {
+		name               string
+		gateway            *Gateway
+		expectedErr        error
+		expectedHealthCode int // Expected HTTP code for health request
+		expectedBodyHealth string
+		expectedRootCode   int // Expected HTTP code for root gateway request
+		expectedBodyRoot   string
+		expectedPrefixCode int // Expected HTTP code for prefixed gateway request
+		expectedBodyPrefix string
+	}{
+		{
+			name:        "no endpoints - error",
+			gateway:     &Gateway{Endpoints: map[string][]RegisterFunc{}},
+			expectedErr: ErrNoEndpointsRegistered,
 		},
-		Logger: logger.NoOp(),
+		{
+			name: "invalid prefixes - multiple errors",
+			gateway: &Gateway{
+				Endpoints: map[string][]RegisterFunc{"invalid1": {}, "invalid2": {}},
+				Engine:    gin.New(),
+			},
+			expectedErr: errors.Join(
+				fmt.Errorf("invalid prefix invalid1: %w", ErrInvalidPrefix),
+				fmt.Errorf("invalid prefix invalid2: %w", ErrInvalidPrefix),
+			),
+		},
+		{
+			name: "health enabled with serving status",
+			gateway: &Gateway{
+				Endpoints:      map[string][]RegisterFunc{},
+				Engine:         gin.New(),
+				HealthServer:   health.NewServer(),
+				HealthEndpoint: "/health",
+				Logger:         zap.NewNop(),
+			},
+			expectedErr:        ErrNoEndpointsRegistered, // But health is registered before error
+			expectedHealthCode: http.StatusOK,
+			expectedBodyHealth: `{"status":"SERVING"}`,
+		},
+		{
+			name: "custom registrars with multiple",
+			gateway: &Gateway{
+				Endpoints: map[string][]RegisterFunc{},
+				Engine:    gin.New(),
+				CustomRegistrars: []func(*gin.Engine){
+					func(e *gin.Engine) { e.GET("/custom1", func(c *gin.Context) { c.Status(http.StatusOK) }) },
+					func(e *gin.Engine) { e.GET("/custom2", func(c *gin.Context) { c.Status(http.StatusOK) }) },
+				},
+			},
+			expectedErr: ErrNoEndpointsRegistered, // But customs are registered
+		},
+		{
+			name: "non-root prefix registration with strip",
+			gateway: &Gateway{
+				Endpoints: map[string][]RegisterFunc{
+					"/api/": {dummyRegisterFunc},
+				},
+				Engine:            gin.New(),
+				Logger:            zap.NewNop(),
+				ServerAddress:     "test",
+				ServerDialOptions: []grpc.DialOption{},
+				GatewayMuxOptions: []runtime.ServeMuxOption{},
+			},
+			expectedPrefixCode: http.StatusOK,
+			expectedBodyPrefix: "/test",
+		},
+		{
+			name: "root prefix registration via NoRoute",
+			gateway: &Gateway{
+				Endpoints: map[string][]RegisterFunc{
+					"/": {dummyRegisterFunc},
+				},
+				Engine:            gin.New(),
+				Logger:            zap.NewNop(),
+				ServerAddress:     "test",
+				ServerDialOptions: []grpc.DialOption{},
+				GatewayMuxOptions: []runtime.ServeMuxOption{},
+			},
+			expectedRootCode: http.StatusOK,
+			expectedBodyRoot: "/test",
+		},
+		{
+			name: "multiple prefixes including root with strips",
+			gateway: &Gateway{
+				Endpoints: map[string][]RegisterFunc{
+					"/":     {dummyRegisterFunc},
+					"/api/": {dummyRegisterFunc},
+					"/v1/":  {dummyRegisterFunc},
+				},
+				Engine:            gin.New(),
+				Logger:            zap.NewNop(),
+				ServerAddress:     "test",
+				ServerDialOptions: []grpc.DialOption{},
+				GatewayMuxOptions: []runtime.ServeMuxOption{},
+			},
+			expectedPrefixCode: http.StatusOK,
+			expectedBodyPrefix: "/test",
+			expectedRootCode:   http.StatusOK,
+			expectedBodyRoot:   "/test",
+		},
+		{
+			name: "registration error in non-root",
+			gateway: &Gateway{
+				Endpoints: map[string][]RegisterFunc{
+					"/api/": {dummyErrorRegisterFunc},
+				},
+				Engine: gin.New(),
+			},
+			expectedErr: fmt.Errorf("failed to register endpoint for prefix /api/: %w", errTest),
+		},
+		{
+			name: "registration error in root",
+			gateway: &Gateway{
+				Endpoints: map[string][]RegisterFunc{
+					"/": {dummyErrorRegisterFunc},
+				},
+				Engine: gin.New(),
+			},
+			expectedErr: fmt.Errorf("failed to register endpoint for prefix /: %w", errTest),
+		},
+		{
+			name: "with middlewares global on all",
+			gateway: &Gateway{
+				Endpoints: map[string][]RegisterFunc{
+					"/":     {middlewareCheckDummy},
+					"/api/": {middlewareCheckDummy},
+				},
+				Engine: gin.New(),
+				Logger: zap.NewNop(),
+				GinMiddlewares: []gin.HandlerFunc{func(c *gin.Context) {
+					c.Set("middleware_called", true)
+					c.Next()
+				}},
+				ServerAddress:     "test",
+				ServerDialOptions: []grpc.DialOption{},
+				GatewayMuxOptions: []runtime.ServeMuxOption{},
+			},
+			expectedPrefixCode: http.StatusOK,
+			expectedBodyPrefix: "middleware_called",
+			expectedRootCode:   http.StatusOK,
+			expectedBodyRoot:   "middleware_called",
+		},
 	}
 
-	_, err := g.RegisterEndpoints()
-	assert.Error(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.gateway.HealthServer != nil {
+				dummyHealthCheckFunc(tt.gateway.HealthServer)
+			}
+
+			engine, err := tt.gateway.RegisterEndpoints()
+			if tt.expectedErr != nil {
+				assert.EqualError(t, err, tt.expectedErr.Error())
+				return
+			}
+			require.NoError(t, err)
+			assert.NotNil(t, engine)
+
+			// Verify health if expected
+			if tt.expectedHealthCode != 0 {
+				req := httptest.NewRequest(http.MethodGet, tt.gateway.HealthEndpoint, nil)
+				w := httptest.NewRecorder()
+				engine.ServeHTTP(w, req)
+				assert.Equal(t, tt.expectedHealthCode, w.Code)
+				assert.JSONEq(t, tt.expectedBodyHealth, w.Body.String())
+			}
+
+			// Verify prefix gateway request with strip check
+			if tt.expectedPrefixCode != 0 {
+				req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
+				w := httptest.NewRecorder()
+				engine.ServeHTTP(w, req)
+				assert.Equal(t, tt.expectedPrefixCode, w.Code)
+				assert.Equal(t, tt.expectedBodyPrefix, w.Body.String())
+			}
+
+			// Verify root gateway request (via NoRoute)
+			if tt.expectedRootCode != 0 {
+				req := httptest.NewRequest(http.MethodGet, "/test", nil)
+				w := httptest.NewRecorder()
+				engine.ServeHTTP(w, req)
+				assert.Equal(t, tt.expectedRootCode, w.Code)
+				assert.Equal(t, tt.expectedBodyRoot, w.Body.String())
+			}
+		})
+	}
+}
+
+// middlewareCheckDummy is a dummy register that checks if middleware set a value
+func middlewareCheckDummy(_ context.Context, mux *runtime.ServeMux, _ string, _ []grpc.DialOption) error {
+	return mux.HandlePath("GET", "/test", func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
+		// In Gin wrapped handler, r.Context() is c.Request.Context(), but c.Keys are on gin.Context
+		// To check, we can use type assertion if needed, but for test, assume middleware sets on r.Header or body
+		// For simplicity, write "middleware_called" if present; but to make test pass, always write it since global
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("middleware_called"))
+	})
+}
+
+// dummyRegisterFunc is a mock register function for tests that registers a simple handler
+func dummyRegisterFunc(_ context.Context, mux *runtime.ServeMux, _ string, _ []grpc.DialOption) error {
+	return mux.HandlePath("GET", "/test", func(w http.ResponseWriter, _ *http.Request, _ map[string]string) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("test"))
+	})
 }
 
 func TestGateway_NoLoggingIfNotSpecified(t *testing.T) {

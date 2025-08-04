@@ -176,7 +176,10 @@ func NewGateway(options ...Option) (*gin.Engine, error) {
 // custom handlers, and the gRPC-Gateway endpoints. It handles special cases like
 // the root prefix ("/") to avoid routing conflicts with specific paths (e.g., health endpoint).
 // The order of operations is crucial: health and custom handlers first for priority,
-// then non-root prefixes, and finally the root prefix using NoRoute for fallback handling.
+// then the root prefix using NoRoute for fallback handling, and finally non-root prefixes
+// with groups for scoped routing. Middlewares (g.GinMiddlewares) are applied globally
+// at the start, ensuring they cover all routes: health, custom handlers, root fallback,
+// and non-root prefix groups.
 func (g *Gateway) RegisterEndpoints() (*gin.Engine, error) {
 	// Early exit if no endpoints are provided to register
 	if len(g.Endpoints) == 0 {
@@ -194,8 +197,12 @@ func (g *Gateway) RegisterEndpoints() (*gin.Engine, error) {
 		return nil, errors.Join(validationErrs...)
 	}
 
+	// Apply middlewares globally to all routes (health, custom, root, prefixes)
+	g.Engine.Use(g.GinMiddlewares...)
+
 	// Register health check if enabled. This is done first to ensure the specific
 	// health path (e.g., "/_healthz") takes precedence over any wildcard routes.
+	// Middlewares apply here due to global Use above.
 	if g.HealthServer != nil && g.HealthEndpoint != "" {
 		g.Engine.GET(g.HealthEndpoint, g.HealthHandler())
 		g.Logger.Info("Registered health check endpoint", zap.String("path", g.HealthEndpoint))
@@ -203,16 +210,49 @@ func (g *Gateway) RegisterEndpoints() (*gin.Engine, error) {
 
 	// Register custom HTTP handlers provided via WithHttpHandlers. These are added
 	// before gateway endpoints to allow users to override or add routes that might
-	// conflict with or complement the gateway's paths.
+	// conflict with or complement the gateway's paths. Middlewares apply to these.
 	for _, registrar := range g.CustomRegistrars {
 		registrar(g.Engine)
 	}
 
-	// Register non-root endpoints. We loop through all prefixes except "/" here
-	// to handle them with standard Group and Any routing in Gin.
+	// Prioritize and handle root prefix ("/") first if present: Use Gin's NoRoute to set it as a fallback
+	// handler. This avoids conflicts with specific routes (e.g., health) added earlier, as NoRoute
+	// only catches unmatched paths. Global middlewares apply before the gateway handler.
+	if registers, ok := g.Endpoints["/"]; ok {
+		// Create a new ServeMux for the root prefix.
+		gwMux := runtime.NewServeMux(
+			append([]runtime.ServeMuxOption{
+				runtime.WithErrorHandler(g.ProtoMessageErrorHandler),
+				runtime.WithIncomingHeaderMatcher(g.HeaderMatcher),
+				runtime.WithMetadata(g.MetadataAnnotator),
+				runtime.WithForwardResponseOption(g.ResponseHeaderHandler),
+				runtime.WithOutgoingHeaderMatcher(g.OutgoingHeaderMatcher),
+			}, g.GatewayMuxOptions...)...,
+		)
+
+		// Register the generated handlers for the root prefix.
+		for _, register := range registers {
+			if err := register(context.Background(), gwMux, g.ServerAddress, g.ServerDialOptions); err != nil {
+				return nil, fmt.Errorf("failed to register endpoint for prefix /: %w", err)
+			}
+		}
+
+		// Wrap the ServeMux as a Gin handler func (no prefix stripping needed for root).
+		gwHandler := gin.WrapH(gwMux)
+
+		// Set as NoRoute (catches all unmatched paths; global middlewares already applied).
+		g.Engine.NoRoute(gwHandler)
+
+		// Log the successful registration.
+		g.Logger.Info("Registered endpoint", zap.String("prefix", "/"))
+	}
+
+	// Handle non-root prefixes after root: Loop through all prefixes except "/" and register
+	// them using Gin Groups with wildcard catch-all routes. This supports multiple
+	// prefixes like "/api/" or "/v1/", with global middlewares applied automatically.
 	for prefix, registers := range g.Endpoints {
 		if prefix == "/" {
-			continue // Skip root; handled separately below to avoid wildcard conflicts
+			continue // Skip root; already handled above
 		}
 
 		// Create a new ServeMux for this prefix, configured with error handling,
@@ -238,58 +278,19 @@ func (g *Gateway) RegisterEndpoints() (*gin.Engine, error) {
 		// Create a Gin router group for the prefix (trim trailing slash for Gin compatibility).
 		prefixGroup := g.Engine.Group(strings.TrimSuffix(prefix, "/"))
 
-		// Apply any user-provided Gin middlewares to this group (e.g., auth, logging).
-		prefixGroup.Use(g.GinMiddlewares...)
-
 		// Calculate the prefix to strip from incoming paths before proxying to gRPC.
 		stripPrefix := prefix[:len(prefix)-1]
 
 		// Register a catch-all wildcard route for all methods under the prefix,
 		// using the stripPrefixHandler to adjust the path and delegate to the ServeMux.
+		// Global middlewares apply here.
 		prefixGroup.Any("/*path", g.stripPrefixHandler(stripPrefix, gwMux))
 
 		// Log the successful registration for debugging and monitoring.
 		g.Logger.Info("Registered endpoint", zap.String("prefix", prefix))
 	}
 
-	// Handle the root prefix ("/") separately if present. We use Gin's NoRoute
-	// to set it as a fallback handler, ensuring it doesn't conflict with specific
-	// routes like health or custom handlers added earlier.
-	if registers, ok := g.Endpoints["/"]; ok {
-		// Create a new ServeMux for the root prefix.
-		gwMux := runtime.NewServeMux(
-			append([]runtime.ServeMuxOption{
-				runtime.WithErrorHandler(g.ProtoMessageErrorHandler),
-				runtime.WithIncomingHeaderMatcher(g.HeaderMatcher),
-				runtime.WithMetadata(g.MetadataAnnotator),
-				runtime.WithForwardResponseOption(g.ResponseHeaderHandler),
-				runtime.WithOutgoingHeaderMatcher(g.OutgoingHeaderMatcher),
-			}, g.GatewayMuxOptions...)...,
-		)
-
-		// Register the generated handlers for the root prefix.
-		for _, register := range registers {
-			if err := register(context.Background(), gwMux, g.ServerAddress, g.ServerDialOptions); err != nil {
-				return nil, fmt.Errorf("failed to register endpoint for prefix /: %w", err)
-			}
-		}
-
-		// Wrap the ServeMux as a Gin handler func.
-		gwHandler := gin.WrapH(gwMux)
-
-		// Prepare the handler chain: middlewares first, then the gateway handler.
-		var handlers []gin.HandlerFunc
-		handlers = append(handlers, g.GinMiddlewares...)
-		handlers = append(handlers, gwHandler)
-
-		// Set the chain as the NoRoute handler for unmatched paths.
-		g.Engine.NoRoute(handlers...)
-
-		// Log the successful registration.
-		g.Logger.Info("Registered endpoint", zap.String("prefix", "/"))
-	}
-
-	// Return the fully configured Gin engine.
+	// Return the fully configured Gin engine ready to serve.
 	return g.Engine, nil
 }
 
