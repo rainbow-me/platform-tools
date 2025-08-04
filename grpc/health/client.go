@@ -13,9 +13,11 @@ import (
 
 // config holds the configuration for creating a health checker.
 type config struct {
-	target      string
-	dialTimeout time.Duration
-	dialOptions []grpc.DialOption
+	target            string
+	secure            bool
+	backoffConfig     backoff.Config
+	minConnectTimeout time.Duration
+	dialOptions       []grpc.DialOption
 }
 
 // Option is a functional option for configuring the health checker creation.
@@ -28,7 +30,32 @@ func WithTarget(target string) Option {
 	}
 }
 
+// WithSecure enables or disables secure (TLS) connection. If false (default),
+// uses insecure credentials unless overridden.
+// If true, no credentials are set by default; provide custom TLS credentials via WithDialOptions if needed.
+func WithSecure(secure bool) Option {
+	return func(c *config) {
+		c.secure = secure
+	}
+}
+
+// WithBackoffConfig sets the backoff configuration for connection attempts.
+// Uses backoff.Config to avoid deprecated types.
+func WithBackoffConfig(bc backoff.Config) Option {
+	return func(c *config) {
+		c.backoffConfig = bc
+	}
+}
+
+// WithMinConnectTimeout sets the minimum connect timeout for the connection.
+func WithMinConnectTimeout(timeout time.Duration) Option {
+	return func(c *config) {
+		c.minConnectTimeout = timeout
+	}
+}
+
 // WithDialOptions allows passing custom gRPC DialOptions.
+// These are applied last and can override defaults like credentials or connect params.
 func WithDialOptions(opts ...grpc.DialOption) Option {
 	return func(c *config) {
 		c.dialOptions = append(c.dialOptions, opts...)
@@ -73,13 +100,15 @@ func (c *Checker) Close() error {
 }
 
 // NewHealthChecker creates a new Checker with the provided functional options.
-// It creates the connection and waits for it to be ready if a dial timeout is set.
+// It creates the connection using the configured parameters.
 // The user should call Close() when done, typically with defer.
-// Default target is "localhost:50051", insecure, and 10s dial timeout.
+// Default target is "localhost:50051", insecure, default backoff, and 10s min connect timeout.
 func NewHealthChecker(opts ...Option) (*Checker, error) {
 	c := &config{
-		target:      "localhost:50051",
-		dialTimeout: 10 * time.Second,
+		target:            "localhost:50051",
+		secure:            false,
+		backoffConfig:     backoff.DefaultConfig,
+		minConnectTimeout: 10 * time.Second,
 	}
 
 	for _, opt := range opts {
@@ -90,17 +119,17 @@ func NewHealthChecker(opts ...Option) (*Checker, error) {
 		return nil, errors.New("target address is required")
 	}
 
-	dialOpts := c.dialOptions
-
-	// set insecure credentials if none provided
-	dialOpts = append(dialOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-
-	// Set connect parameters with the dial timeout
-	connectParams := grpc.ConnectParams{
-		Backoff:           backoff.DefaultConfig,
-		MinConnectTimeout: c.dialTimeout,
+	var dialOpts []grpc.DialOption
+	if !c.secure {
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
-	dialOpts = append(dialOpts, grpc.WithConnectParams(connectParams))
+
+	dialOpts = append(dialOpts, grpc.WithConnectParams(grpc.ConnectParams{
+		Backoff:           c.backoffConfig,
+		MinConnectTimeout: c.minConnectTimeout,
+	}))
+
+	dialOpts = append(dialOpts, c.dialOptions...)
 
 	conn, err := grpc.NewClient(c.target, dialOpts...)
 	if err != nil {
