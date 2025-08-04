@@ -68,8 +68,8 @@ Use functional options to customize:
 
 ```go
 mux, err := gateway.NewGateway(
-gateway.WithEndpointRegistration("/user/v1/", pb.RegisterUserServiceHandler),
-gateway.WithEndpointRegistration("/payment/v1/", pb.RegisterPaymentServiceHandler),
+  gateway.WithEndpointRegistration("/user/v1/", pb.RegisterUserServiceHandler),
+  gateway.WithEndpointRegistration("/payment/v1/", pb.RegisterPaymentServiceHandler),
 )
 ```
 
@@ -84,11 +84,3 @@ gateway.WithHeadersToForward("X-User-ID", "X-Session-Token")
 ```
 
 These will be converted to lowercase gRPC metadata keys.
-
-### Enabling Request Logging
-
-```go
-gateway.WithRequestLogging()
-```
-
-Logs method, path, duration, and remote address for each HTTP request. Use only in development.

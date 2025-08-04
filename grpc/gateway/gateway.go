@@ -215,38 +215,6 @@ func (g *Gateway) RegisterEndpoints() (*gin.Engine, error) {
 		registrar(g.Engine)
 	}
 
-	// Prioritize and handle root prefix ("/") first if present: Use Gin's NoRoute to set it as a fallback
-	// handler. This avoids conflicts with specific routes (e.g., health) added earlier, as NoRoute
-	// only catches unmatched paths. Global middlewares apply before the gateway handler.
-	if registers, ok := g.Endpoints["/"]; ok {
-		// Create a new ServeMux for the root prefix.
-		gwMux := runtime.NewServeMux(
-			append([]runtime.ServeMuxOption{
-				runtime.WithErrorHandler(g.ProtoMessageErrorHandler),
-				runtime.WithIncomingHeaderMatcher(g.HeaderMatcher),
-				runtime.WithMetadata(g.MetadataAnnotator),
-				runtime.WithForwardResponseOption(g.ResponseHeaderHandler),
-				runtime.WithOutgoingHeaderMatcher(g.OutgoingHeaderMatcher),
-			}, g.GatewayMuxOptions...)...,
-		)
-
-		// Register the generated handlers for the root prefix.
-		for _, register := range registers {
-			if err := register(context.Background(), gwMux, g.ServerAddress, g.ServerDialOptions); err != nil {
-				return nil, fmt.Errorf("failed to register endpoint for prefix /: %w", err)
-			}
-		}
-
-		// Wrap the ServeMux as a Gin handler func (no prefix stripping needed for root).
-		gwHandler := gin.WrapH(gwMux)
-
-		// Set as NoRoute (catches all unmatched paths; global middlewares already applied).
-		g.Engine.NoRoute(gwHandler)
-
-		// Log the successful registration.
-		g.Logger.Info("Registered endpoint", zap.String("prefix", "/"))
-	}
-
 	// Handle non-root prefixes after root: Loop through all prefixes except "/" and register
 	// them using Gin Groups with wildcard catch-all routes. This supports multiple
 	// prefixes like "/api/" or "/v1/", with global middlewares applied automatically.
@@ -282,12 +250,44 @@ func (g *Gateway) RegisterEndpoints() (*gin.Engine, error) {
 		stripPrefix := prefix[:len(prefix)-1]
 
 		// Register a catch-all wildcard route for all methods under the prefix,
-		// using the stripPrefixHandler to adjust the path and delegate to the ServeMux.
+		// using the StripPrefixHandler to adjust the path and delegate to the ServeMux.
 		// Global middlewares apply here.
-		prefixGroup.Any("/*path", g.stripPrefixHandler(stripPrefix, gwMux))
+		prefixGroup.Any("/*path", g.StripPrefixHandler(stripPrefix, gwMux))
 
 		// Log the successful registration for debugging and monitoring.
 		g.Logger.Info("Registered endpoint", zap.String("prefix", prefix))
+	}
+
+	// Prioritize and handle root prefix ("/") first if present: Use Gin's NoRoute to set it as a fallback
+	// handler. This avoids conflicts with specific routes (e.g., health) added earlier, as NoRoute
+	// only catches unmatched paths. Global middlewares apply before the gateway handler.
+	if registers, ok := g.Endpoints["/"]; ok {
+		// Create a new ServeMux for the root prefix.
+		gwMux := runtime.NewServeMux(
+			append([]runtime.ServeMuxOption{
+				runtime.WithErrorHandler(g.ProtoMessageErrorHandler),
+				runtime.WithIncomingHeaderMatcher(g.HeaderMatcher),
+				runtime.WithMetadata(g.MetadataAnnotator),
+				runtime.WithForwardResponseOption(g.ResponseHeaderHandler),
+				runtime.WithOutgoingHeaderMatcher(g.OutgoingHeaderMatcher),
+			}, g.GatewayMuxOptions...)...,
+		)
+
+		// Register the generated handlers for the root prefix.
+		for _, register := range registers {
+			if err := register(context.Background(), gwMux, g.ServerAddress, g.ServerDialOptions); err != nil {
+				return nil, fmt.Errorf("failed to register endpoint for prefix /: %w", err)
+			}
+		}
+
+		// Wrap the ServeMux as a Gin handler func (no prefix stripping needed for root).
+		gwHandler := gin.WrapH(gwMux)
+
+		// Set as NoRoute (catches all unmatched paths; global middlewares already applied).
+		g.Engine.NoRoute(gwHandler)
+
+		// Log the successful registration.
+		g.Logger.Info("Registered endpoint", zap.String("prefix", "/"))
 	}
 
 	// Return the fully configured Gin engine ready to serve.
@@ -314,9 +314,9 @@ func (g *Gateway) HealthHandler() gin.HandlerFunc {
 	}
 }
 
-// stripPrefixHandler creates a Gin handler that strips the prefix
+// StripPrefixHandler creates a Gin handler that strips the prefix
 // from the path before delegating to the given http.Handler
-func (g *Gateway) stripPrefixHandler(strip string, h http.Handler) gin.HandlerFunc {
+func (g *Gateway) StripPrefixHandler(strip string, h http.Handler) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Strip the prefix from the path
 		c.Request.URL.Path = strings.TrimPrefix(c.Request.URL.Path, strip)
