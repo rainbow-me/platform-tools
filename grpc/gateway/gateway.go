@@ -2,7 +2,6 @@ package gateway
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -10,11 +9,8 @@ import (
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/health"
-	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 
@@ -110,14 +106,6 @@ func WithRequestLogging() Option {
 	}
 }
 
-// WithHealthCheck enables the /health endpoint using the provided gRPC health server.
-func WithHealthCheck(healthServer *health.Server, endpoint string) Option {
-	return func(g *Gateway) {
-		g.HealthServer = healthServer
-		g.HealthEndpoint = endpoint
-	}
-}
-
 type Gateway struct {
 	ServerAddress        string
 	ServerDialOptions    []grpc.DialOption
@@ -128,8 +116,6 @@ type Gateway struct {
 	Logger               *logger.Logger
 	Timeout              time.Duration
 	EnableRequestLogging bool
-	HealthServer         *health.Server
-	HealthEndpoint       string
 }
 
 // NewGateway creates a gRPC REST Gateway with HTTP handlers that have been
@@ -147,7 +133,6 @@ func NewGateway(options ...Option) (*http.ServeMux, error) {
 		HeaderConfig: internalmetadata.HeaderConfig{
 			HeadersToForward: internalmetadata.GetHeadersToForward(),
 		},
-		// TODO why is this a noop?
 		Logger: logger.NoOp(),
 	}
 
@@ -210,41 +195,10 @@ func (g *Gateway) RegisterEndpoints() (*http.ServeMux, error) {
 		g.Mux.Handle(prefix, finalHandler)
 
 		// Log the registration
-		g.Logger.Info("Registered endpoint",
-			zap.String("prefix", prefix),
-		)
-	}
-
-	// Register health check if enabled
-	if g.HealthServer != nil && g.HealthEndpoint != "" {
-		g.Mux.HandleFunc(g.HealthEndpoint, g.HealthHandler())
-		g.Logger.Info("Registered health check endpoint", zap.String("path", g.HealthEndpoint))
+		g.Logger.Info("Registered endpoint", logger.String("prefix", prefix))
 	}
 
 	return g.Mux, nil
-}
-
-// HealthHandler returns an HTTP handler for health checks
-func (g *Gateway) HealthHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		service := r.URL.Query().Get("service")
-
-		resp, err := g.HealthServer.Check(r.Context(), &grpc_health_v1.HealthCheckRequest{
-			Service: service,
-		})
-		if err != nil {
-			g.Logger.Error("Health check failed", zap.Error(err), zap.String("service", service))
-			http.Error(w, err.Error(), http.StatusServiceUnavailable)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		if err = json.NewEncoder(w).Encode(map[string]string{
-			"status": resp.GetStatus().String(),
-		}); err != nil {
-			g.Logger.Error("Failed to encode health response", zap.Error(err))
-		}
-	}
 }
 
 // WrapHandler adds middleware for logging
@@ -254,10 +208,10 @@ func (g *Gateway) WrapHandler(handler http.Handler) http.Handler {
 		defer func() {
 			duration := time.Since(start)
 			g.Logger.Info("Handled HTTP request",
-				zap.String("method", r.Method),
-				zap.String("path", r.URL.Path),
-				zap.Duration("duration", duration),
-				zap.String("remote_addr", r.RemoteAddr),
+				logger.String("method", r.Method),
+				logger.String("path", r.URL.Path),
+				logger.Duration("duration", duration),
+				logger.String("remote_addr", r.RemoteAddr),
 			)
 		}()
 
@@ -325,8 +279,8 @@ func (g *Gateway) ProtoMessageErrorHandler(
 	err error,
 ) {
 	g.Logger.Error("gRPC error",
-		zap.Error(err),
-		zap.String("path", r.URL.Path),
+		logger.Error(err),
+		logger.String("path", r.URL.Path),
 	)
 	runtime.DefaultHTTPErrorHandler(ctx, mux, marshaller, w, r, err)
 }

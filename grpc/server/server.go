@@ -112,8 +112,7 @@ func WithGRPCServer(
 // WithGateway adds a dedicated HTTP server for the gRPC-REST gateway
 // It creates an HTTP server with a mux configured solely for the gateway.
 func WithGateway(name, port string, httpOpts []HTTPConfigOption, gatewayOpts ...gateway.Option) Option {
-	mux := http.NewServeMux()
-	_, err := gateway.NewGateway(append([]gateway.Option{gateway.WithMux(mux)}, gatewayOpts...)...)
+	mux, err := gateway.NewGateway(gatewayOpts...)
 	if err != nil {
 		return func(_ *Server) error {
 			return fmt.Errorf("failed to create gateway: %w", err)
