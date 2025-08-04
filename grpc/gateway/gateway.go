@@ -133,6 +133,17 @@ func NewGateway(options ...Option) (*http.ServeMux, error) {
 		HeaderConfig: internalmetadata.HeaderConfig{
 			HeadersToForward: internalmetadata.GetHeadersToForward(),
 		},
+
+		// Logger is set to NoOp by default to prevent duplicate logging of requests.
+		// Since the gRPC gateway acts as an HTTP proxy to gRPC services, logging
+		// at both the HTTP layer and gRPC layer would result in redundant log entries
+		// for the same request.
+		//
+		// If logging is desired, use WithLogger option to provide a custom logger:
+		//   gateway.NewGateway(
+		//       gateway.WithLogger(myLogger),
+		//       gateway.WithRequestLogging(),
+		//   )
 		Logger: logger.NoOp(),
 	}
 
