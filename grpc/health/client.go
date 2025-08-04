@@ -35,43 +35,48 @@ func WithDialOptions(opts ...grpc.DialOption) Option {
 	}
 }
 
-// HealthChecker is a wrapper around the gRPC health client that manages the underlying connection.
-type HealthChecker struct {
+// Checker is a wrapper around the gRPC health client that manages the underlying connection.
+type Checker struct {
 	client grpc_health_v1.HealthClient
 	conn   *grpc.ClientConn
 }
 
+// Client returns the underlying gRPC health client.
+func (c *Checker) Client() grpc_health_v1.HealthClient {
+	return c.client
+}
+
 // Check performs a health check on the specified service.
-func (h *HealthChecker) Check(
+func (c *Checker) Check(
 	ctx context.Context,
 	req *grpc_health_v1.HealthCheckRequest,
 	opts ...grpc.CallOption,
 ) (*grpc_health_v1.HealthCheckResponse, error) {
-	return h.client.Check(ctx, req, opts...)
+	return c.client.Check(ctx, req, opts...)
 }
 
 // Watch watches the health status of the specified service.
-func (h *HealthChecker) Watch(
+func (c *Checker) Watch(
 	ctx context.Context,
 	req *grpc_health_v1.HealthCheckRequest,
 	opts ...grpc.CallOption,
 ) (grpc_health_v1.Health_WatchClient, error) {
-	return h.client.Watch(ctx, req, opts...)
+	return c.client.Watch(ctx, req, opts...)
 }
 
 // Close closes the underlying gRPC connection.
-func (h *HealthChecker) Close() error {
-	if h.conn != nil {
-		return h.conn.Close()
+func (c *Checker) Close() error {
+	if c.conn != nil {
+		return c.conn.Close()
 	}
 	return nil
 }
 
-// NewHealthChecker creates a new HealthChecker with the provided functional options.
+// NewHealthChecker creates a new Checker with the provided functional options.
 // It creates the connection and waits for it to be ready if a dial timeout is set.
 // The user should call Close() when done, typically with defer.
 // Default target is "localhost:50051", insecure, and 10s dial timeout.
-func NewHealthChecker(opts ...Option) (*HealthChecker, error) {
+func NewHealthChecker(opts ...Option) (*Checker, error) {
 	c := &config{
 		target:      "localhost:50051",
 		dialTimeout: 10 * time.Second,
@@ -104,5 +109,5 @@ func NewHealthChecker(opts ...Option) (*HealthChecker, error) {
 
 	client := grpc_health_v1.NewHealthClient(conn)
 
-	return &HealthChecker{client: client, conn: conn}, nil
+	return &Checker{client: client, conn: conn}, nil
 }
