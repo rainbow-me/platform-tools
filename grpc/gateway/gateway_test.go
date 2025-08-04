@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -14,8 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/health"
-	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/rainbow-me/platform-tools/common/logger"
@@ -424,26 +421,6 @@ func TestGateway_Options(t *testing.T) {
 				assert.Equal(t, expDuration, g.Timeout)
 			},
 		},
-		{
-			name: "WithHealthCheck",
-			setupOpt: func() (gateway.Option, interface{}) {
-				hs := health.NewServer()
-				endpoint := "/health"
-				return gateway.WithHealthCheck(hs, endpoint), struct {
-					HS       *health.Server
-					Endpoint string
-				}{HS: hs, Endpoint: endpoint}
-			},
-			verify: func(t *testing.T, g *gateway.Gateway, expected interface{}) {
-				exp, ok := expected.(struct {
-					HS       *health.Server
-					Endpoint string
-				})
-				assert.True(t, ok)
-				assert.Equal(t, exp.HS, g.HealthServer)
-				assert.Equal(t, exp.Endpoint, g.HealthEndpoint)
-			},
-		},
 	}
 
 	for _, tt := range tests {
@@ -466,100 +443,4 @@ func TestGateway_outgoingHeaderMatcher_StandardHeaders(t *testing.T) {
 	key, ok = g.OutgoingHeaderMatcher("Content-Length")
 	assert.True(t, ok)
 	assert.Equal(t, "content-length", key)
-}
-
-// faultyRecorder to force encode error
-type faultyRecorder struct {
-	*httptest.ResponseRecorder
-}
-
-func (f *faultyRecorder) Write([]byte) (int, error) {
-	return 0, errors.New("encode failed")
-}
-
-func TestGateway_healthHandler_1(t *testing.T) {
-	tests := []struct {
-		name           string
-		service        string
-		setupStatus    map[string]grpc_health_v1.HealthCheckResponse_ServingStatus // Map service to status
-		expectedCode   int
-		expectedBody   string
-		expectedHeader string
-		forceEncodeErr bool
-		expectErrLog   bool
-	}{
-		{
-			name:    "successful check",
-			service: "test-service",
-			setupStatus: map[string]grpc_health_v1.HealthCheckResponse_ServingStatus{
-				"test-service": grpc_health_v1.HealthCheckResponse_SERVING,
-			},
-			expectedCode:   http.StatusOK,
-			expectedBody:   `{"status":"SERVING"}`,
-			expectedHeader: "application/json",
-		},
-		{
-			name:    "not serving",
-			service: "test-service",
-			setupStatus: map[string]grpc_health_v1.HealthCheckResponse_ServingStatus{
-				"test-service": grpc_health_v1.HealthCheckResponse_NOT_SERVING,
-			},
-			expectedCode:   http.StatusOK,
-			expectedBody:   `{"status":"NOT_SERVING"}`,
-			expectedHeader: "application/json",
-		},
-		{
-			name:           "unknown service error",
-			service:        "unknown",
-			setupStatus:    map[string]grpc_health_v1.HealthCheckResponse_ServingStatus{}, // No status set
-			expectedCode:   http.StatusServiceUnavailable,
-			expectedBody:   "rpc error: code = NotFound desc = unknown service",
-			expectedHeader: "text/plain; charset=utf-8",
-			expectErrLog:   true,
-		},
-		{
-			name:    "encode error",
-			service: "",
-			setupStatus: map[string]grpc_health_v1.HealthCheckResponse_ServingStatus{
-				"": grpc_health_v1.HealthCheckResponse_SERVING,
-			},
-			forceEncodeErr: true,
-			expectedCode:   http.StatusOK,
-			expectedBody:   "",
-			expectedHeader: "application/json",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			hs := health.NewServer()
-			for svc, status := range tt.setupStatus {
-				hs.SetServingStatus(svc, status)
-			}
-			g := &gateway.Gateway{
-				HealthServer: hs,
-				Logger:       test.NewLogger(t),
-			}
-
-			handler := g.HealthHandler()
-
-			req := httptest.NewRequest(http.MethodGet, "/health?service="+tt.service, nil)
-			var w http.ResponseWriter = httptest.NewRecorder()
-			if tt.forceEncodeErr {
-				fw := &faultyRecorder{ResponseRecorder: httptest.NewRecorder()}
-				w = fw
-			}
-
-			handler(w, req)
-
-			rec, ok := w.(*httptest.ResponseRecorder)
-			if !ok {
-				rec = w.(*faultyRecorder).ResponseRecorder
-			}
-
-			assert.Equal(t, tt.expectedCode, rec.Code)
-			assert.Equal(t, tt.expectedBody, strings.TrimSpace(rec.Body.String()))
-			assert.Equal(t, tt.expectedHeader, rec.Header().Get("Content-Type"))
-		})
-	}
 }
