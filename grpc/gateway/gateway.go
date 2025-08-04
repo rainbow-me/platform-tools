@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"go.uber.org/zap"
@@ -199,6 +200,23 @@ func (g *Gateway) RegisterEndpoints() (*gin.Engine, error) {
 
 	// Apply middlewares globally to all routes (health, custom, root, prefixes)
 	g.Engine.Use(g.GinMiddlewares...)
+
+	// Add default CORS middleware globally
+	g.Engine.Use(cors.New(cors.Config{
+		AllowOrigins: []string{"*"}, // Allow all origins; customize as needed
+		AllowMethods: []string{
+			http.MethodGet,
+			http.MethodPost,
+			http.MethodPut,
+			http.MethodPatch,
+			http.MethodDelete,
+			http.MethodHead,
+			http.MethodOptions,
+		},
+		AllowHeaders:     []string{"*"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	// Register health check if enabled. This is done first to ensure the specific
 	// health path (e.g., "/_healthz") takes precedence over any wildcard routes.
