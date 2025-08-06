@@ -2,9 +2,9 @@ package interceptors
 
 import (
 	"context"
+	"errors"
 	"strings"
 
-	"github.com/cockroachdb/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -25,7 +25,7 @@ var (
 func UnaryAuthUnaryInterceptor(cfg *auth.Config) grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
-		req interface{},
+		req any,
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (interface{}, error) {
@@ -84,19 +84,26 @@ func extractToken(ctx context.Context, cfg *auth.Config) (string, error) {
 	}
 
 	// Take the first value if multiple are present (common case is single value).
-	fullToken := fullTokenSlice[0]
+	fullToken := strings.TrimSpace(fullTokenSlice[0])
+	if fullToken == "" {
+		return "", errAuthTokenNotFound
+	}
 
-	// Split the full token by the scheme.
-	parts := strings.Split(fullToken, cfg.Scheme)
+	// Split into exactly two parts: scheme and token.
+	parts := strings.SplitN(fullToken, " ", 2)
 	if len(parts) != 2 {
 		return "", errInvalidAPIKeyFormat
 	}
 
-	// Trim any whitespace from the token part.
+	// Check if the first part matches the expected scheme.
+	if parts[0] != cfg.Scheme {
+		return "", errInvalidAPIKeyFormat
+	}
+
+	// Trim whitespace from the token.
 	token := strings.TrimSpace(parts[1])
 
-	// Additional validation: token must not be empty and must not contain spaces
-	// (as API keys/tokens typically do not include spaces).
+	// Validate token is not empty and does not contain spaces (as API keys typically don't).
 	if token == "" || strings.Contains(token, " ") {
 		return "", errInvalidAPIKeyFormat
 	}

@@ -84,11 +84,25 @@ func TestAuthUnaryInterceptor(t *testing.T) {
 			expectCalled: false,
 		},
 		{
-			name: "Header present but invalid format (no scheme match) - returns 'invalid API key format'",
+			name: "Header present but empty after trim - returns 'API key not found'",
 			cfg: &auth.Config{
 				Enabled:    true,
 				HeaderName: "Authorization",
-				Scheme:     "Bearer ",
+				Scheme:     "Bearer",
+			},
+			fullMethod: "/service.Method",
+			md: metadata.New(map[string]string{
+				"authorization": "   ",
+			}),
+			expectErr:    status.Error(codes.Unauthenticated, "API key not found"),
+			expectCalled: false,
+		},
+		{
+			name: "Header present but invalid format (no space) - returns 'invalid API key format'",
+			cfg: &auth.Config{
+				Enabled:    true,
+				HeaderName: "Authorization",
+				Scheme:     "Bearer",
 			},
 			fullMethod: "/service.Method",
 			md: metadata.New(map[string]string{
@@ -98,11 +112,39 @@ func TestAuthUnaryInterceptor(t *testing.T) {
 			expectCalled: false,
 		},
 		{
-			name: "Header present but invalid format (multiple parts) - returns 'invalid API key format'",
+			name: "Header present but scheme mismatch - returns 'invalid API key format'",
 			cfg: &auth.Config{
 				Enabled:    true,
 				HeaderName: "Authorization",
-				Scheme:     "Bearer ",
+				Scheme:     "Bearer",
+			},
+			fullMethod: "/service.Method",
+			md: metadata.New(map[string]string{
+				"authorization": "Basic token",
+			}),
+			expectErr:    status.Error(codes.Unauthenticated, "invalid API key format"),
+			expectCalled: false,
+		},
+		{
+			name: "Header present but token empty - returns 'invalid API key format'",
+			cfg: &auth.Config{
+				Enabled:    true,
+				HeaderName: "Authorization",
+				Scheme:     "Bearer",
+			},
+			fullMethod: "/service.Method",
+			md: metadata.New(map[string]string{
+				"authorization": "Bearer ",
+			}),
+			expectErr:    status.Error(codes.Unauthenticated, "invalid API key format"),
+			expectCalled: false,
+		},
+		{
+			name: "Header present but invalid format (multiple parts in token) - returns 'invalid API key format'",
+			cfg: &auth.Config{
+				Enabled:    true,
+				HeaderName: "Authorization",
+				Scheme:     "Bearer",
 			},
 			fullMethod: "/service.Method",
 			md: metadata.New(map[string]string{
@@ -116,7 +158,7 @@ func TestAuthUnaryInterceptor(t *testing.T) {
 			cfg: &auth.Config{
 				Enabled:    true,
 				HeaderName: "Authorization",
-				Scheme:     "Bearer ",
+				Scheme:     "Bearer",
 				Keys: map[string]bool{
 					"valid-key": true,
 				},
@@ -129,11 +171,57 @@ func TestAuthUnaryInterceptor(t *testing.T) {
 			expectCalled: false,
 		},
 		{
-			name: "Valid token in keys - proceeds to handler",
+			name: "Header with scheme mismatch (no space, wrong prefix) - returns 'invalid API key format'",
+			cfg: &auth.Config{
+				Enabled:    true,
+				HeaderName: "Authorization",
+				Scheme:     "Bearer",
+			},
+			fullMethod: "/service.Method",
+			md: metadata.New(map[string]string{
+				"authorization": "TokenBearer 123",
+			}),
+			expectErr:    status.Error(codes.Unauthenticated, "invalid API key format"),
+			expectCalled: false,
+		},
+		{
+			name: "Scheme mismatch due to extra space in config - returns 'invalid API key format'",
 			cfg: &auth.Config{
 				Enabled:    true,
 				HeaderName: "Authorization",
 				Scheme:     "Bearer ",
+				Keys: map[string]bool{
+					"valid-key": true,
+				},
+			},
+			fullMethod: "/service.Method",
+			md: metadata.New(map[string]string{
+				"authorization": "Bearer valid-key",
+			}),
+			expectErr:    status.Error(codes.Unauthenticated, "invalid API key format"),
+			expectCalled: false,
+		},
+		{
+			name: "Martin test",
+			cfg: &auth.Config{
+				Enabled:    true,
+				HeaderName: "Authorization",
+				Scheme:     "Bearer",
+			},
+			fullMethod: "/service.Method",
+			md: metadata.New(map[string]string{
+				"authorization": "TokenBearer 123",
+			}),
+			expectErr:    status.Error(codes.Unauthenticated, "invalid API key format"),
+			expectCalled: false,
+		},
+
+		{
+			name: "Valid token in keys - proceeds to handler",
+			cfg: &auth.Config{
+				Enabled:    true,
+				HeaderName: "Authorization",
+				Scheme:     "Bearer",
 				Keys: map[string]bool{
 					"valid-key": true,
 				},
@@ -151,7 +239,7 @@ func TestAuthUnaryInterceptor(t *testing.T) {
 			cfg: &auth.Config{
 				Enabled:    true,
 				HeaderName: "X-API-Key",
-				Scheme:     "ApiKey ",
+				Scheme:     "ApiKey",
 				Keys: map[string]bool{
 					"custom-key": true,
 				},
@@ -169,7 +257,7 @@ func TestAuthUnaryInterceptor(t *testing.T) {
 			cfg: &auth.Config{
 				Enabled:    true,
 				HeaderName: "Authorization",
-				Scheme:     "Bearer ",
+				Scheme:     "Bearer",
 				Keys: map[string]bool{
 					"first-key": true,
 				},
