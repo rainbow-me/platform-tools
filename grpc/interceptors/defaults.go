@@ -180,7 +180,7 @@ func NewDefaultServerUnaryChain(
 	}
 
 	// add errors handling
-	chain.Push("errors", UnaryErrorServerInterceptor)
+	//chain.Push("errors", UnaryErrorServerInterceptor)
 
 	if cfg.Auth != nil && cfg.Auth.Enabled {
 		chain.Push("auth", UnaryAuthUnaryInterceptor(cfg.Auth))
