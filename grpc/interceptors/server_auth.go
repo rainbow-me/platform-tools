@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/DataDog/dd-trace-go/v2/ddtrace/ext"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"strings"
 
@@ -67,10 +68,10 @@ func UnaryAuthUnaryInterceptor(cfg *auth.Config) grpc.UnaryServerInterceptor {
 			//	return nil, status.Error(codes.Unauthenticated, "span not found in context")
 			//}
 
-			//span.SetTag(ext.Error, true)
+			span.SetTag(ext.Error, true)
 
 			s, isStatus := status.FromError(err)
-			fmt.Println("@@@@ Setting error span for:", s, "isStatus:", isStatus)
+			fmt.Println("@@@@ Setting error span for:", s, "isStatus:", isStatus, "message", s.Message(), "code:", s.Code(), s.Code().String())
 			if isStatus {
 				// For gRPC status errors, use the specific code as error type and the status message
 				//span.SetTag(ext.ErrorType, s.Code().String())
