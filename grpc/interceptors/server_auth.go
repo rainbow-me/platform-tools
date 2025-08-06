@@ -3,9 +3,6 @@ package interceptors
 import (
 	"context"
 	"errors"
-	"fmt"
-	"github.com/DataDog/dd-trace-go/v2/ddtrace/ext"
-	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"strings"
 
 	"google.golang.org/grpc"
@@ -61,31 +58,6 @@ func UnaryAuthUnaryInterceptor(cfg *auth.Config) grpc.UnaryServerInterceptor {
 
 		// Validate if the extracted token matches any of the allowed keys.
 		if !cfg.Keys[token] {
-
-			span, ok := tracer.SpanFromContext(ctx)
-			fmt.Println("@@@@ Span from context:", span, "ok:", ok)
-			//if !ok {
-			//	return nil, status.Error(codes.Unauthenticated, "span not found in context")
-			//}
-
-			span.SetTag(ext.Error, true)
-
-			s, isStatus := status.FromError(err)
-			fmt.Println("@@@@ Setting error span for:", s, "isStatus:", isStatus, "message", s.Message(), "code:", s.Code(), s.Code().String())
-			if isStatus {
-				// For gRPC status errors, use the specific code as error type and the status message
-				//span.SetTag(ext.ErrorType, s.Code().String())
-				//span.SetTag(ext.ErrorMsg, s.Message())
-				// Set the gRPC status code as an integer for visibility in Datadog UI and metrics
-				span.SetTag("rpc.grpc.status_code", int(s.Code()))
-				span.SetTag("rpc.grpc.status_message", s.Message())
-				span.SetTag("some-custom-tag", "custom-value") // Example of adding a custom tag
-			} else {
-				// For non-gRPC status errors, treat as system error
-				//span.SetTag(ext.ErrorType, "system")
-				//span.SetTag(ext.ErrorMsg, err.Error())
-			}
-
 			return nil, status.Error(codes.Unauthenticated, "invalid API key provided")
 		}
 
