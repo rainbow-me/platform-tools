@@ -202,7 +202,7 @@ func TestAuthUnaryInterceptor(t *testing.T) {
 			expectCalled: false,
 		},
 		{
-			name: "Martin test",
+			name: "Header with scheme mismatch (no space, wrong prefix) - returns 'invalid API key format'",
 			cfg: &auth.Config{
 				Enabled:    true,
 				HeaderName: "Authorization",
