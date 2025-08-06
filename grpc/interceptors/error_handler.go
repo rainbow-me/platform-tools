@@ -57,6 +57,7 @@ func handleError(ctx context.Context, err error) error {
 // ERROR TAG: Tagging error in tracing span with appropriate type, message, and stack
 func setErrorSpan(ctx context.Context, err error) {
 	span, ok := tracer.SpanFromContext(ctx)
+	fmt.Println("SSSSSSSS:", span, ok)
 	if !ok {
 		return
 	}
