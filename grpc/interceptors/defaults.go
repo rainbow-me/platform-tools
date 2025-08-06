@@ -179,12 +179,13 @@ func NewDefaultServerUnaryChain(
 		chain.Push("logger", UnaryLoggerServerInterceptor(logger, cfg.LoggingOptions...))
 	}
 
-	// add errors handling
-	//chain.Push("errors", UnaryErrorServerInterceptor)
-
+	// Add authentication interceptor if enabled
 	if cfg.Auth != nil && cfg.Auth.Enabled {
 		chain.Push("auth", UnaryAuthUnaryInterceptor(cfg.Auth))
 	}
+
+	// add errors handling
+	chain.Push("errors", UnaryErrorServerInterceptor)
 
 	// Add panic recovery interceptor if enabled
 	if cfg.PanicRecoveryEnabled {
