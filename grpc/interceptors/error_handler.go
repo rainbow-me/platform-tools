@@ -59,7 +59,6 @@ func setErrorSpan(ctx context.Context, err error) {
 	if !ok {
 		return
 	}
-
 	span.SetTag(ext.Error, true)
 
 	s, isStatus := status.FromError(err)
