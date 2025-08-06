@@ -34,9 +34,9 @@ const (
 	isNewTraceKey = "is_new_trace"
 	clientIDKey   = "client_id"
 	requestIDKey  = "request_id"
-	serviceKey    = "service"
-	methodKey     = "method"
-	grpcStatusKey = "status"
+	serviceKey    = "grpc_service"
+	methodKey     = "grpc_method"
+	grpcStatusKey = "grpc_status"
 
 	// Request/response payloads
 	requestKey  = "request"
