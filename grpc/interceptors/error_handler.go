@@ -3,7 +3,6 @@ package interceptors
 import (
 	"context"
 	"fmt"
-
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/ext"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"google.golang.org/grpc"
@@ -55,6 +54,7 @@ func handleError(ctx context.Context, err error) error {
 // For non-status errors, it treats them as system errors.
 // ERROR TAG: Tagging error in tracing span with appropriate type, message, and stack
 func setErrorSpan(ctx context.Context, err error) {
+	fmt.Println("@@@@ Setting error span for:", err)
 	span, ok := tracer.SpanFromContext(ctx)
 	if !ok {
 		return
@@ -63,10 +63,15 @@ func setErrorSpan(ctx context.Context, err error) {
 	span.SetTag(ext.Error, true)
 
 	s, isStatus := status.FromError(err)
+	fmt.Println("@@@@ Setting error span for:", s, "isStatus:", isStatus)
 	if isStatus {
 		// For gRPC status errors, use the specific code as error type and the status message
 		span.SetTag(ext.ErrorType, s.Code().String())
 		span.SetTag(ext.ErrorMsg, s.Message())
+		// Set the gRPC status code as an integer for visibility in Datadog UI and metrics
+		span.SetTag("rpc.grpc.status_code", int(s.Code()))
+		span.SetTag("rpc.grpc.status_message", s.Message())
+		span.SetTag("some-custom-tag", "custom-value") // Example of adding a custom tag
 	} else {
 		// For non-gRPC status errors, treat as system error
 		span.SetTag(ext.ErrorType, "system")
@@ -74,5 +79,5 @@ func setErrorSpan(ctx context.Context, err error) {
 	}
 
 	// Set the error stack if available (works with pkg/errors wrapped errors)
-	span.SetTag(ext.ErrorStack, fmt.Sprintf("%+v", err))
+	//span.SetTag(ext.ErrorStack, fmt.Sprintf("%+v", err))
 }

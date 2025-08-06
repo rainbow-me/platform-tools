@@ -27,8 +27,8 @@ import (
 const (
 	// Request timing and identification
 	durationIDKey = "duration"
-	traceIDKey    = "trace_id"
-	spanIDKey     = "span_id"
+	traceIDKey    = "dd.trace_id"
+	spanIDKey     = "dd.span_id"
 
 	// Request context information
 	isNewTraceKey = "is_new_trace"
