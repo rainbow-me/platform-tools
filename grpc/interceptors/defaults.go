@@ -8,6 +8,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/rainbow-me/platform-tools/common/logger"
+	"github.com/rainbow-me/platform-tools/grpc/auth"
 )
 
 const (
@@ -27,6 +28,9 @@ type Config struct {
 
 	// Logging options - uses existing LoggingInterceptorOption functions
 	LoggingOptions []LoggingInterceptorOption
+
+	// Authentication settings
+	Auth *auth.Config
 }
 
 // ConfigOption is a functional option for configuring the interceptor chain
@@ -79,6 +83,15 @@ func WithDetailedLogging() ConfigOption {
 	)
 }
 
+// WithAuthOptions sets authentication configuration options.
+func WithAuthOptions(opts ...auth.ConfigOption) ConfigOption {
+	return func(c *Config) {
+		for _, opt := range opts {
+			opt(c.Auth)
+		}
+	}
+}
+
 // NewConfig creates a new configuration with sensible defaults
 func NewConfig(serviceName, environment string, opts ...ConfigOption) *Config {
 	// Set sensible defaults
@@ -98,6 +111,16 @@ func NewConfig(serviceName, environment string, opts ...ConfigOption) *Config {
 					codes.Canceled: zapcore.WarnLevel, // Handle cancellations as warnings
 				},
 			),
+		},
+
+		Auth: &auth.Config{
+			Enabled:    false, // Default to disabled; can be enabled with WithAuthOptions
+			HeaderName: auth.DefaultHeaderName,
+			Scheme:     auth.DefaultScheme,
+			Keys:       make(map[string]bool),
+			SkipMethods: map[string]bool{
+				healthCheckMethod: true, // Skip auth for health check method by default
+			},
 		},
 	}
 
@@ -154,6 +177,10 @@ func NewDefaultServerUnaryChain(
 	// Add logging interceptor if logger is provided
 	if logger != nil {
 		chain.Push("logger", UnaryLoggerServerInterceptor(logger, cfg.LoggingOptions...))
+	}
+
+	if cfg.Auth != nil && cfg.Auth.Enabled {
+		chain.Push("auth", UnaryAuthUnaryInterceptor(cfg.Auth))
 	}
 
 	// add errors handling

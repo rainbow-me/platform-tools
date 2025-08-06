@@ -1,0 +1,105 @@
+package interceptors
+
+import (
+	"context"
+	"strings"
+
+	"github.com/cockroachdb/errors"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
+
+	"github.com/rainbow-me/platform-tools/grpc/auth"
+)
+
+// Package-level error definitions for authentication failures.
+var (
+	errAuthTokenNotFound   = errors.New("auth token not found")
+	errInvalidAPIKeyFormat = errors.New("invalid API key format")
+)
+
+// UnaryAuthUnaryInterceptor returns a gRPC unary server interceptor that performs API key authentication
+// based on the provided configuration. It skips authentication if disabled or for specified methods,
+// extracts and validates the API key from metadata, and proceeds to the handler if valid.
+func UnaryAuthUnaryInterceptor(cfg *auth.Config) grpc.UnaryServerInterceptor {
+	return func(
+		ctx context.Context,
+		req interface{},
+		info *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler,
+	) (interface{}, error) {
+		// Skip authentication if it's disabled in the config.
+		if !cfg.Enabled {
+			return handler(ctx, req)
+		}
+
+		// Skip authentication for specific methods listed in SkipMethods.
+		if _, shouldSkip := cfg.SkipMethods[info.FullMethod]; shouldSkip {
+			return handler(ctx, req)
+		}
+
+		// Extract the API key token from the request metadata.
+		token, err := extractToken(ctx, cfg)
+		if err != nil {
+			// Determine the appropriate error message based on the extraction error.
+			var message string
+			switch {
+			case errors.Is(err, errAuthTokenNotFound):
+				message = "API key not found"
+			case errors.Is(err, errInvalidAPIKeyFormat):
+				message = "invalid API key format"
+			default:
+				message = "API key validation failed"
+			}
+			// Return gRPC Unauthenticated status with the error message.
+			return nil, status.Error(codes.Unauthenticated, message)
+		}
+
+		// Validate if the extracted token matches any of the allowed keys.
+		if !cfg.Keys[token] {
+			return nil, status.Error(codes.Unauthenticated, "invalid API key provided")
+		}
+
+		// If authentication succeeds, proceed to the next handler.
+		return handler(ctx, req)
+	}
+}
+
+// extractToken retrieves and parses the authentication token from the gRPC metadata.
+// It expects the token in the format "<Scheme> <token>" (e.g., "Bearer xyz") in the specified header,
+// where the token itself must not contain spaces and must not be empty.
+func extractToken(ctx context.Context, cfg *auth.Config) (string, error) {
+	// Retrieve incoming metadata from the context.
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return "", errAuthTokenNotFound
+	}
+
+	// gRPC metadata keys are always lowercase, so normalize the header name.
+	headerKey := strings.ToLower(cfg.HeaderName)
+	fullTokenSlice := md.Get(headerKey)
+	if len(fullTokenSlice) == 0 {
+		return "", errAuthTokenNotFound
+	}
+
+	// Take the first value if multiple are present (common case is single value).
+	fullToken := fullTokenSlice[0]
+
+	// Split the full token by the scheme.
+	parts := strings.Split(fullToken, cfg.Scheme)
+	if len(parts) != 2 {
+		return "", errInvalidAPIKeyFormat
+	}
+
+	// Trim any whitespace from the token part.
+	token := strings.TrimSpace(parts[1])
+
+	// Additional validation: token must not be empty and must not contain spaces
+	// (as API keys/tokens typically do not include spaces).
+	if token == "" || strings.Contains(token, " ") {
+		return "", errInvalidAPIKeyFormat
+	}
+
+	return token, nil
+}
