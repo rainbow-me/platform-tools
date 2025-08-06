@@ -20,7 +20,6 @@ func UnaryErrorServerInterceptor(
 ) (interface{}, error) {
 	resp, err := handler(ctx, req)
 	err = handleError(ctx, err)
-	fmt.Println("UnaryErrorServerInterceptor - Error detected:", err)
 	return resp, err
 }
 
@@ -57,7 +56,6 @@ func handleError(ctx context.Context, err error) error {
 // ERROR TAG: Tagging error in tracing span with appropriate type, message, and stack
 func setErrorSpan(ctx context.Context, err error) {
 	span, ok := tracer.SpanFromContext(ctx)
-	fmt.Println("SSSSSSSS:", span, ok)
 	if !ok {
 		return
 	}
@@ -65,7 +63,6 @@ func setErrorSpan(ctx context.Context, err error) {
 	span.SetTag(ext.Error, true)
 
 	s, isStatus := status.FromError(err)
-	fmt.Println("Error from gRPC status:", s, "Is status error:", isStatus)
 	if isStatus {
 		// For gRPC status errors, use the specific code as error type and the status message
 		span.SetTag(ext.ErrorType, s.Code().String())
