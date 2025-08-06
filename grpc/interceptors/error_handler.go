@@ -63,7 +63,7 @@ func setErrorSpan(ctx context.Context, err error) {
 	span.SetTag(ext.Error, true)
 
 	s, isStatus := status.FromError(err)
-	fmt.Println("@@@@ Setting error span for:", s, "isStatus:", isStatus, "message", s.Message(), "code:", s.Code(), s.Code().String())
+	fmt.Println("@@@@ Setting error span for:", s, "isStatus:", isStatus, "message", s.Message(), "code:", int(s.Code()), s.Code().String())
 	if isStatus {
 		// For gRPC status errors, use the specific code as error type and the status message
 		//span.SetTag(ext.ErrorType, s.Code().String())
