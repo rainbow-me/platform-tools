@@ -66,10 +66,10 @@ func setErrorSpan(ctx context.Context, err error) {
 	fmt.Println("@@@@ Setting error span for:", s, "isStatus:", isStatus, "message", s.Message(), "code:", int(s.Code()), s.Code().String())
 	if isStatus {
 		// For gRPC status errors, use the specific code as error type and the status message
-		//span.SetTag(ext.ErrorType, s.Code().String())
-		//span.SetTag(ext.ErrorMsg, s.Message())
+		span.SetTag(ext.ErrorMsg, s.Message())
 		// Set the gRPC status code as an integer for visibility in Datadog UI and metrics
-		span.SetTag("rpc.grpc.status_code", s.Code())
+		span.SetTag("rpc.grpc.status", s.Code())
+		span.SetTag("rpc.grpc.status_code", int(s.Code()))
 		span.SetTag("rpc.grpc.status_message", s.Message())
 		span.SetTag("some-custom-tag", "custom-value") // Example of adding a custom tag
 	} else {
