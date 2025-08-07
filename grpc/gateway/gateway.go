@@ -286,7 +286,7 @@ func (g *Gateway) OutgoingHeaderMatcher(key string) (string, bool) {
 
 	// Allow standard response headers
 	switch key {
-	case "content-type", "content-length":
+	case "content-type", "content-length", "content-encoding":
 		return key, true
 	default:
 		return "", false
