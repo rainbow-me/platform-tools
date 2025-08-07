@@ -573,6 +573,8 @@ func TestGRPCGateway(t *testing.T) {
 				server.WithGateway("test-gateway", gatewayPort, nil,
 					gateway.WithServerAddress("localhost"+grpcPort),
 					gateway.WithEndpointRegistration("/test/", test.RegisterHelloServiceHandlerFromEndpoint),
+					gateway.WithCompression(),
+					gateway.WithCORS(),
 				),
 			)
 			if err != nil {
@@ -597,7 +599,7 @@ func TestGRPCGateway(t *testing.T) {
 				t.Errorf("Unexpected status: %d", resp.StatusCode)
 			}
 			// Parse response JSON and verify (omitted for brevity; add JSON unmarshal and checks)
-
+			fmt.Println(resp.Header)
 			srv.Stop()
 			<-done
 		})

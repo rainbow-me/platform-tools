@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"google.golang.org/grpc/encoding/gzip"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/NYTimes/gziphandler"
+	"github.com/gorilla/handlers"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -107,10 +108,17 @@ func WithRequestLogging() Option {
 	}
 }
 
-// WithGzip enables gzip compression for the gateway responses.
-func WithGzip() Option {
+// WithCompression enables gzip/deflate compression for the gateway responses using gorilla/handlers.
+func WithCompression() Option {
 	return func(g *Gateway) {
-		g.EnableGzip = true
+		g.EnableCompression = true
+	}
+}
+
+// WithCORS enables CORS middleware for the gateway using gorilla/handlers with permissive settings (origins: *, methods: all common, headers: *).
+func WithCORS() Option {
+	return func(g *Gateway) {
+		g.EnableCORS = true
 	}
 }
 
@@ -124,7 +132,8 @@ type Gateway struct {
 	Logger               *logger.Logger
 	Timeout              time.Duration
 	EnableRequestLogging bool
-	EnableGzip           bool
+	EnableCompression    bool
+	EnableCORS           bool
 }
 
 // NewGateway creates a gRPC REST Gateway with HTTP handlers that have been
@@ -135,7 +144,8 @@ func NewGateway(options ...Option) (*http.ServeMux, error) {
 		ServerAddress: DefaultServerAddress,
 		Endpoints:     make(map[string][]RegisterFunc),
 		ServerDialOptions: []grpc.DialOption{
-			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithTransportCredentials(insecure.NewCredentials()), // Ignore certificate errors
+			grpc.WithDefaultCallOptions(grpc.UseCompressor(gzip.Name)),
 		},
 		Mux:     http.NewServeMux(),
 		Timeout: DefaultTimeout,
@@ -211,8 +221,17 @@ func (g *Gateway) RegisterEndpoints() (*http.ServeMux, error) {
 			finalHandler = g.WrapHandler(handler)
 		}
 
-		if g.EnableGzip {
-			finalHandler = gziphandler.GzipHandler(finalHandler)
+		if g.EnableCompression {
+			finalHandler = handlers.CompressHandler(finalHandler)
+		}
+
+		if g.EnableCORS {
+			finalHandler = handlers.CORS(
+				handlers.AllowedOrigins([]string{"*"}),
+				handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"}),
+				handlers.AllowedHeaders([]string{"*"}),
+				handlers.AllowCredentials(),
+			)(finalHandler)
 		}
 
 		// Register the handler to the Mux
@@ -276,7 +295,6 @@ func (g *Gateway) HeaderMatcher(key string) (string, bool) {
 // OutgoingHeaderMatcher determines which outgoing headers to include in HTTP response
 func (g *Gateway) OutgoingHeaderMatcher(key string) (string, bool) {
 	key = strings.ToLower(key)
-	fmt.Println("OutgoingHeaderMatcher called with key:", key)
 
 	// Forward the same headers we accept for requests
 	for _, header := range g.HeaderConfig.HeadersToForward {
