@@ -2,7 +2,6 @@ package interceptors
 
 import (
 	"context"
-	"fmt"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/ext"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"google.golang.org/grpc"
@@ -54,7 +53,6 @@ func handleError(ctx context.Context, err error) error {
 // For non-status errors, it treats them as system errors.
 // ERROR TAG: Tagging error in tracing span with appropriate type, message, and stack
 func setErrorSpan(ctx context.Context, err error) {
-	fmt.Println("@@@@ Setting error span for:", err)
 	span, ok := tracer.SpanFromContext(ctx)
 	if !ok {
 		return
