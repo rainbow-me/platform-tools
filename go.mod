@@ -7,6 +7,7 @@ require (
 	github.com/DataDog/dd-trace-go/v2 v2.1.0
 	github.com/cockroachdb/errors v1.12.0
 	github.com/google/uuid v1.6.0
+	github.com/gorilla/handlers v1.5.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.1
 	github.com/mennanov/fmutils v0.3.3
@@ -46,6 +47,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/eapache/queue/v2 v2.0.0-20230407133247-75960ed334e4 // indirect
 	github.com/ebitengine/purego v0.8.3 // indirect
+	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/getsentry/sentry-go v0.27.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect

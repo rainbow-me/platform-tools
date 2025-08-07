@@ -99,6 +99,17 @@ func TestNewGateway(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "with cors",
+			options: []gateway.Option{
+				gateway.WithCORS(gateway.WithAllowCredentials(true)),
+				gateway.WithEndpointRegistration("/api/",
+					func(_ context.Context, _ *runtime.ServeMux, _ string, _ []grpc.DialOption) error {
+						return nil
+					}),
+			},
+			wantErr: false,
+		},
+		{
 			name: "with headers to forward",
 			options: []gateway.Option{
 				gateway.WithHeadersToForward("X-Test"),
@@ -305,6 +316,11 @@ func TestGateway_registerEndpoints(t *testing.T) {
 		Logger:               logger,
 		Timeout:              5 * time.Second,
 		EnableRequestLogging: true,
+		EnableCompression:    true,
+		CORS: &gateway.CORS{
+			Enabled: true,
+			Config:  gateway.DefaultCORSConfig(),
+		},
 	}
 
 	mux, err := g.RegisterEndpoints()
@@ -419,6 +435,28 @@ func TestGateway_Options(t *testing.T) {
 				expDuration, ok := expected.(time.Duration)
 				assert.True(t, ok)
 				assert.Equal(t, expDuration, g.Timeout)
+			},
+		},
+		{
+			name: "WithGzip",
+			setupOpt: func() (gateway.Option, interface{}) {
+				return gateway.WithCompression(), true
+			},
+			verify: func(t *testing.T, g *gateway.Gateway, expected interface{}) {
+				expDuration, ok := expected.(bool)
+				assert.True(t, ok)
+				assert.Equal(t, expDuration, g.EnableCompression)
+			},
+		},
+		{
+			name: "WithCORS",
+			setupOpt: func() (gateway.Option, interface{}) {
+				return gateway.WithCORS(), true
+			},
+			verify: func(t *testing.T, g *gateway.Gateway, expected interface{}) {
+				expDuration, ok := expected.(bool)
+				assert.True(t, ok)
+				assert.Equal(t, expDuration, g.CORS.Enabled)
 			},
 		},
 	}

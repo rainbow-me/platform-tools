@@ -8,9 +8,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/handlers"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/encoding/gzip"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 
@@ -106,6 +108,30 @@ func WithRequestLogging() Option {
 	}
 }
 
+// WithCompression enables gzip/deflate compression for the gateway responses using gorilla/handlers.
+func WithCompression() Option {
+	return func(g *Gateway) {
+		g.EnableCompression = true
+	}
+}
+
+// WithCORS enables CORS middleware with configurable options
+func WithCORS(opts ...CORSOption) Option {
+	config := DefaultCORSConfig()
+
+	// Apply custom options
+	for _, opt := range opts {
+		opt(&config)
+	}
+
+	return func(g *Gateway) {
+		g.CORS = &CORS{
+			Enabled: true,
+			Config:  config,
+		}
+	}
+}
+
 type Gateway struct {
 	ServerAddress        string
 	ServerDialOptions    []grpc.DialOption
@@ -116,6 +142,8 @@ type Gateway struct {
 	Logger               *logger.Logger
 	Timeout              time.Duration
 	EnableRequestLogging bool
+	EnableCompression    bool
+	CORS                 *CORS
 }
 
 // NewGateway creates a gRPC REST Gateway with HTTP handlers that have been
@@ -126,14 +154,17 @@ func NewGateway(options ...Option) (*http.ServeMux, error) {
 		ServerAddress: DefaultServerAddress,
 		Endpoints:     make(map[string][]RegisterFunc),
 		ServerDialOptions: []grpc.DialOption{
-			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithTransportCredentials(insecure.NewCredentials()), // Ignore certificate errors
+			grpc.WithDefaultCallOptions(grpc.UseCompressor(gzip.Name)),
 		},
 		Mux:     http.NewServeMux(),
 		Timeout: DefaultTimeout,
 		HeaderConfig: internalmetadata.HeaderConfig{
 			HeadersToForward: internalmetadata.GetHeadersToForward(),
 		},
-
+		CORS: &CORS{
+			Enabled: false,
+		},
 		// Logger is set to NoOp by default to prevent duplicate logging of requests.
 		// Since the gRPC gateway acts as an HTTP proxy to gRPC services, logging
 		// at both the HTTP layer and gRPC layer would result in redundant log entries
@@ -200,6 +231,16 @@ func (g *Gateway) RegisterEndpoints() (*http.ServeMux, error) {
 		finalHandler := handler
 		if g.EnableRequestLogging {
 			finalHandler = g.WrapHandler(handler)
+		}
+
+		// Apply compression middleware if enabled
+		if g.EnableCompression {
+			finalHandler = handlers.CompressHandler(finalHandler)
+		}
+
+		// Apply CORS middleware
+		if g.CORS.Enabled {
+			finalHandler = g.CORS.Apply(finalHandler)
 		}
 
 		// Register the handler to the Mux
@@ -273,7 +314,20 @@ func (g *Gateway) OutgoingHeaderMatcher(key string) (string, bool) {
 
 	// Allow standard response headers
 	switch key {
-	case "content-type", "content-length":
+	case
+		"content-type",
+		"content-length",
+		"content-encoding",
+
+		// CORS
+		"access-control-allow-origin",
+		"access-control-allow-methods",
+		"access-control-allow-headers",
+		"access-control-allow-credentials",
+		"access-control-max-age",
+		"access-control-expose-headers",
+		"access-control-request-method",
+		"access-control-request-headers":
 		return key, true
 	default:
 		return "", false

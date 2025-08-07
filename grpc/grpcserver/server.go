@@ -7,6 +7,7 @@ import (
 	grpcmiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	_ "google.golang.org/grpc/encoding/gzip" // enable gzip compression on server side
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
