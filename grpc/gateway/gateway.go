@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/NYTimes/gziphandler"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -106,6 +107,13 @@ func WithRequestLogging() Option {
 	}
 }
 
+// WithGzip enables gzip compression for the gateway responses.
+func WithGzip() Option {
+	return func(g *Gateway) {
+		g.EnableGzip = true
+	}
+}
+
 type Gateway struct {
 	ServerAddress        string
 	ServerDialOptions    []grpc.DialOption
@@ -116,6 +124,7 @@ type Gateway struct {
 	Logger               *logger.Logger
 	Timeout              time.Duration
 	EnableRequestLogging bool
+	EnableGzip           bool
 }
 
 // NewGateway creates a gRPC REST Gateway with HTTP handlers that have been
@@ -200,6 +209,10 @@ func (g *Gateway) RegisterEndpoints() (*http.ServeMux, error) {
 		finalHandler := handler
 		if g.EnableRequestLogging {
 			finalHandler = g.WrapHandler(handler)
+		}
+
+		if g.EnableGzip {
+			finalHandler = gziphandler.GzipHandler(finalHandler)
 		}
 
 		// Register the handler to the Mux

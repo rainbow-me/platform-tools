@@ -5,6 +5,7 @@ go 1.23.10
 require (
 	github.com/DataDog/dd-trace-go/contrib/google.golang.org/grpc/v2 v2.1.0
 	github.com/DataDog/dd-trace-go/v2 v2.1.0
+	github.com/NYTimes/gziphandler v1.1.1
 	github.com/cockroachdb/errors v1.12.0
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0

@@ -305,6 +305,7 @@ func TestGateway_registerEndpoints(t *testing.T) {
 		Logger:               logger,
 		Timeout:              5 * time.Second,
 		EnableRequestLogging: true,
+		EnableGzip:           true,
 	}
 
 	mux, err := g.RegisterEndpoints()
@@ -419,6 +420,17 @@ func TestGateway_Options(t *testing.T) {
 				expDuration, ok := expected.(time.Duration)
 				assert.True(t, ok)
 				assert.Equal(t, expDuration, g.Timeout)
+			},
+		},
+		{
+			name: "WithGzip",
+			setupOpt: func() (gateway.Option, interface{}) {
+				return gateway.WithGzip(), true
+			},
+			verify: func(t *testing.T, g *gateway.Gateway, expected interface{}) {
+				expDuration, ok := expected.(bool)
+				assert.True(t, ok)
+				assert.Equal(t, expDuration, g.EnableGzip)
 			},
 		},
 	}
