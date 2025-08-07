@@ -2,6 +2,7 @@ package interceptors
 
 import (
 	"context"
+
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/ext"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"google.golang.org/grpc"
@@ -74,5 +75,5 @@ func setErrorSpan(ctx context.Context, err error) {
 	}
 
 	// Set the error stack if available (works with pkg/errors wrapped errors)
-	//span.SetTag(ext.ErrorStack, fmt.Sprintf("%+v", err))
+	// span.SetTag(ext.ErrorStack, fmt.Sprintf("%+v", err))
 }
