@@ -115,10 +115,20 @@ func WithCompression() Option {
 	}
 }
 
-// WithCORS enables CORS middleware
-func WithCORS() Option {
+// WithCORS enables CORS middleware with configurable options
+func WithCORS(opts ...CORSOption) Option {
+	config := DefaultCORSConfig()
+
+	// Apply custom options
+	for _, opt := range opts {
+		opt(&config)
+	}
+
 	return func(g *Gateway) {
-		g.EnableCORS = true
+		g.CORS = &CORS{
+			Enabled: true,
+			Config:  config,
+		}
 	}
 }
 
@@ -133,7 +143,7 @@ type Gateway struct {
 	Timeout              time.Duration
 	EnableRequestLogging bool
 	EnableCompression    bool
-	EnableCORS           bool
+	CORS                 *CORS
 }
 
 // NewGateway creates a gRPC REST Gateway with HTTP handlers that have been
@@ -221,25 +231,14 @@ func (g *Gateway) RegisterEndpoints() (*http.ServeMux, error) {
 			finalHandler = g.WrapHandler(handler)
 		}
 
+		// Apply compression middleware if enabled
 		if g.EnableCompression {
 			finalHandler = handlers.CompressHandler(finalHandler)
 		}
 
-		if g.EnableCORS {
-			finalHandler = handlers.CORS(
-				handlers.AllowedOrigins([]string{"*"}),
-				handlers.AllowedMethods([]string{
-					http.MethodGet,
-					http.MethodPost,
-					http.MethodPut,
-					http.MethodDelete,
-					http.MethodOptions,
-					http.MethodHead,
-					http.MethodPatch,
-				}),
-				handlers.AllowedHeaders([]string{"*"}),
-				handlers.AllowCredentials(),
-			)(finalHandler)
+		// Apply CORS middleware
+		if g.CORS.Enabled {
+			finalHandler = g.CORS.Apply(finalHandler)
 		}
 
 		// Register the handler to the Mux
@@ -313,7 +312,14 @@ func (g *Gateway) OutgoingHeaderMatcher(key string) (string, bool) {
 
 	// Allow standard response headers
 	switch key {
-	case "content-type", "content-length", "content-encoding":
+	case
+		"content-type",
+		"content-length",
+		"content-encoding",
+		"access-control-allow-origin",
+		"access-control-allow-methods",
+		"access-control-allow-headers",
+		"access-control-allow-credentials":
 		return key, true
 	default:
 		return "", false

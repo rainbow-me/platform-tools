@@ -306,7 +306,10 @@ func TestGateway_registerEndpoints(t *testing.T) {
 		Timeout:              5 * time.Second,
 		EnableRequestLogging: true,
 		EnableCompression:    true,
-		EnableCORS:           true,
+		CORS: &gateway.CORS{
+			Enabled: true,
+			Config:  gateway.DefaultCORSConfig(),
+		},
 	}
 
 	mux, err := g.RegisterEndpoints()
@@ -442,7 +445,7 @@ func TestGateway_Options(t *testing.T) {
 			verify: func(t *testing.T, g *gateway.Gateway, expected interface{}) {
 				expDuration, ok := expected.(bool)
 				assert.True(t, ok)
-				assert.Equal(t, expDuration, g.EnableCORS)
+				assert.Equal(t, expDuration, g.CORS.Enabled)
 			},
 		},
 	}
