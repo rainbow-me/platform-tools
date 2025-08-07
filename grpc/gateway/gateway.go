@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"google.golang.org/grpc/encoding/gzip"
 	"net/http"
 	"strings"
 	"time"
@@ -13,6 +12,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/encoding/gzip"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 
@@ -115,7 +115,7 @@ func WithCompression() Option {
 	}
 }
 
-// WithCORS enables CORS middleware for the gateway using gorilla/handlers with permissive settings (origins: *, methods: all common, headers: *).
+// WithCORS enables CORS middleware
 func WithCORS() Option {
 	return func(g *Gateway) {
 		g.EnableCORS = true
@@ -228,7 +228,15 @@ func (g *Gateway) RegisterEndpoints() (*http.ServeMux, error) {
 		if g.EnableCORS {
 			finalHandler = handlers.CORS(
 				handlers.AllowedOrigins([]string{"*"}),
-				handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"}),
+				handlers.AllowedMethods([]string{
+					http.MethodGet,
+					http.MethodPost,
+					http.MethodPut,
+					http.MethodDelete,
+					http.MethodOptions,
+					http.MethodHead,
+					http.MethodPatch,
+				}),
 				handlers.AllowedHeaders([]string{"*"}),
 				handlers.AllowCredentials(),
 			)(finalHandler)

@@ -305,7 +305,8 @@ func TestGateway_registerEndpoints(t *testing.T) {
 		Logger:               logger,
 		Timeout:              5 * time.Second,
 		EnableRequestLogging: true,
-		EnableGzip:           true,
+		EnableCompression:    true,
+		EnableCORS:           true,
 	}
 
 	mux, err := g.RegisterEndpoints()
@@ -425,12 +426,23 @@ func TestGateway_Options(t *testing.T) {
 		{
 			name: "WithGzip",
 			setupOpt: func() (gateway.Option, interface{}) {
-				return gateway.WithGzip(), true
+				return gateway.WithCompression(), true
 			},
 			verify: func(t *testing.T, g *gateway.Gateway, expected interface{}) {
 				expDuration, ok := expected.(bool)
 				assert.True(t, ok)
-				assert.Equal(t, expDuration, g.EnableGzip)
+				assert.Equal(t, expDuration, g.EnableCompression)
+			},
+		},
+		{
+			name: "WithCORS",
+			setupOpt: func() (gateway.Option, interface{}) {
+				return gateway.WithCORS(), true
+			},
+			verify: func(t *testing.T, g *gateway.Gateway, expected interface{}) {
+				expDuration, ok := expected.(bool)
+				assert.True(t, ok)
+				assert.Equal(t, expDuration, g.EnableCompression)
 			},
 		},
 	}
