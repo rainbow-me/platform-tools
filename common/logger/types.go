@@ -1,6 +1,8 @@
 package logger
 
 import (
+	"strings"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -44,3 +46,24 @@ const (
 	PanicLevel  = Level(zapcore.PanicLevel)
 	FatalLevel  = Level(zapcore.FatalLevel)
 )
+
+func LevelFromString(s string) Level {
+	switch strings.ToLower(s) {
+	case "debug":
+		return DebugLevel
+	case "info":
+		return InfoLevel
+	case "warn", "warning":
+		return WarnLevel
+	case "error":
+		return ErrorLevel
+	case "dpanic":
+		return DPanicLevel
+	case "panic":
+		return PanicLevel
+	case "fatal":
+		return FatalLevel
+	default:
+		return InfoLevel // default to info
+	}
+}
