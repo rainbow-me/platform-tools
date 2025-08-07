@@ -276,6 +276,7 @@ func (g *Gateway) HeaderMatcher(key string) (string, bool) {
 // OutgoingHeaderMatcher determines which outgoing headers to include in HTTP response
 func (g *Gateway) OutgoingHeaderMatcher(key string) (string, bool) {
 	key = strings.ToLower(key)
+	fmt.Println("OutgoingHeaderMatcher called with key:", key)
 
 	// Forward the same headers we accept for requests
 	for _, header := range g.HeaderConfig.HeadersToForward {
