@@ -442,7 +442,7 @@ func TestGateway_Options(t *testing.T) {
 			verify: func(t *testing.T, g *gateway.Gateway, expected interface{}) {
 				expDuration, ok := expected.(bool)
 				assert.True(t, ok)
-				assert.Equal(t, expDuration, g.EnableCompression)
+				assert.Equal(t, expDuration, g.EnableCORS)
 			},
 		},
 	}
