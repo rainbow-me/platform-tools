@@ -2,6 +2,7 @@ package logger
 
 import (
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type Field = zap.Field
@@ -30,4 +31,15 @@ var (
 	Uintptr    = zap.Uintptr
 	Error      = zap.Error
 	Errors     = zap.Errors
+)
+
+type Level zapcore.Level
+
+const (
+	DebugLevel Level = iota - 1
+	WarnLevel
+	ErrorLevel
+	DPanicLevel
+	PanicLevel
+	FatalLevel
 )
