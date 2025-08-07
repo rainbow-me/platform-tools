@@ -36,10 +36,11 @@ var (
 type Level zapcore.Level
 
 const (
-	DebugLevel Level = iota - 1
-	WarnLevel
-	ErrorLevel
-	DPanicLevel
-	PanicLevel
-	FatalLevel
+	DebugLevel  = Level(zapcore.DebugLevel)
+	InfoLevel   = Level(zapcore.InfoLevel)
+	WarnLevel   = Level(zapcore.WarnLevel)
+	ErrorLevel  = Level(zapcore.ErrorLevel)
+	DPanicLevel = Level(zapcore.DPanicLevel)
+	PanicLevel  = Level(zapcore.PanicLevel)
+	FatalLevel  = Level(zapcore.FatalLevel)
 )
