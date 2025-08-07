@@ -167,7 +167,6 @@ func NewDefaultServerUnaryChain(
 	chain.Push("trace", grpctrace.UnaryServerInterceptor(
 		grpctrace.WithService(cfg.ServiceName),
 		grpctrace.WithAnalytics(true),
-		grpctrace.WithMetadataTags(),
 		grpctrace.WithUntracedMethods(healthCheckMethod),
 	))
 
