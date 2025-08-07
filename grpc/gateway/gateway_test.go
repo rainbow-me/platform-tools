@@ -99,6 +99,17 @@ func TestNewGateway(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "with cors",
+			options: []gateway.Option{
+				gateway.WithCORS(gateway.WithAllowCredentials(true)),
+				gateway.WithEndpointRegistration("/api/",
+					func(_ context.Context, _ *runtime.ServeMux, _ string, _ []grpc.DialOption) error {
+						return nil
+					}),
+			},
+			wantErr: false,
+		},
+		{
 			name: "with headers to forward",
 			options: []gateway.Option{
 				gateway.WithHeadersToForward("X-Test"),

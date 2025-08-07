@@ -75,6 +75,7 @@ func (c *CORS) Apply(handler http.Handler) http.Handler {
 		handlers.AllowedOrigins(c.Config.AllowedOrigins),
 		handlers.AllowedMethods(c.Config.AllowedMethods),
 		handlers.AllowedHeaders(c.Config.AllowedHeaders),
+		handlers.OptionStatusCode(http.StatusNoContent),
 	}
 
 	if c.Config.AllowCredentials {
