@@ -89,6 +89,14 @@ func logWithContext(
 
 	executionDuration := time.Since(startTime)
 
+	// Check if logging should be skipped based on environment and gRPC status code
+	st := status.Convert(err)
+	if skipCodes, ok := config.skipLoggingByEnvAndCode[config.Environment]; ok {
+		if _, shouldSkip := skipCodes[st.Code()]; shouldSkip {
+			return resp, err
+		}
+	}
+
 	// Build log fields for this specific request
 	logFields := buildRequestLogFields(config, req, resp, executionDuration)
 
@@ -166,7 +174,7 @@ func buildRequestLogFields(
 }
 
 // determineLogLevel determines the appropriate log level based on error status
-func determineLogLevel(config *LoggingInterceptorConfig, err error) zapcore.Level {
+func determineLogLevel(config *LoggingInterceptorConfig, err error) logger.Level {
 	if err == nil {
 		return config.LogLevel
 	}
