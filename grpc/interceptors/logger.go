@@ -31,12 +31,14 @@ const (
 	spanIDKey     = "dd.span_id"
 
 	// Request context information
-	isNewTraceKey = "is_new_trace"
-	clientIDKey   = "client_id"
-	requestIDKey  = "request_id"
-	serviceKey    = "grpc_service"
-	methodKey     = "grpc_method"
-	grpcStatusKey = "grpc_status"
+	isNewTraceKey     = "is_new_trace"
+	clientIDKey       = "client_id"
+	requestIDKey      = "request_id"
+	serviceKey        = "grpc_service"
+	methodKey         = "grpc_method"
+	grpcStatusKey     = "grpc_status"
+	grpcMessageKey    = "grpc_message"
+	grpcErrDetailsKey = "grpc_error_details"
 
 	// Request/response payloads
 	requestKey  = "request"
@@ -104,7 +106,7 @@ func logWithContext(
 	logLevel := determineLogLevel(config, err)
 
 	// Add gRPC status and error information
-	logFields = append(logFields, buildStatusLogFields(err)...)
+	logFields = append(logFields, buildStatusLogFields(config, err)...)
 
 	// Add client and trace information from metadata
 	logFields = append(logFields, buildMetadataLogFields(ctx)...)
@@ -190,15 +192,35 @@ func determineLogLevel(config *LoggingInterceptorConfig, err error) logger.Level
 }
 
 // buildStatusLogFields creates log fields for gRPC status and error information
-func buildStatusLogFields(err error) []zapcore.Field {
+func buildStatusLogFields(config *LoggingInterceptorConfig, err error) []zapcore.Field {
 	var fields []zapcore.Field
 
 	statusValue := status.Convert(err)
-	fields = append(fields, zap.String(grpcStatusKey, statusValue.Code().String()))
+	fields = append(fields,
+		zap.String(grpcStatusKey, statusValue.Code().String()),
+		zap.String(grpcMessageKey, statusValue.Message()),
+	)
 
-	// Add error details if present
-	if err != nil {
-		fields = append(fields, zap.Error(err))
+	if config.LogErrorDetails {
+		details := statusValue.Details()
+		if len(details) > 0 {
+			fields = append(
+				fields,
+				zap.Array(
+					grpcErrDetailsKey,
+					zapcore.ArrayMarshalerFunc(func(arr zapcore.ArrayEncoder) error {
+						for _, d := range details {
+							if pb, ok := d.(proto.Message); ok {
+								_ = arr.AppendObject(&pbZapField{pb})
+							} else {
+								_ = arr.AppendReflected(d)
+							}
+						}
+						return nil
+					}),
+				),
+			)
+		}
 	}
 
 	return fields

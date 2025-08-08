@@ -18,6 +18,7 @@ type LoggingInterceptorConfig struct {
 	LogParams          bool // Logs both request and response.
 	LogRequests        bool
 	LogResponses       bool
+	LogErrorDetails    bool // Logs error details in the response.
 	LogParamsBlocklist []fieldmaskpb.FieldMask
 	LogLevel           logger.Level
 	ErrorLogLevel      logger.Level
