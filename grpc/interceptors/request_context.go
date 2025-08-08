@@ -38,8 +38,24 @@ func RequestContextUnaryServerInterceptor() grpc.UnaryServerInterceptor {
 
 // GetRequestInfoFromContext extracts RequestInfo from context
 func GetRequestInfoFromContext(ctx context.Context) (*internalmetadata.RequestInfo, bool) {
-	requestInfo, ok := ctx.Value(requestContextKey).(*internalmetadata.RequestInfo)
-	return requestInfo, ok
+	// Check if context is nil
+	if ctx == nil {
+		return &internalmetadata.RequestInfo{}, false
+	}
+
+	// Get value from context
+	val := ctx.Value(requestContextKey)
+	if val == nil {
+		return &internalmetadata.RequestInfo{}, false
+	}
+
+	// Type assert to RequestInfo
+	requestInfo, ok := val.(*internalmetadata.RequestInfo)
+	if !ok || requestInfo == nil {
+		return &internalmetadata.RequestInfo{}, false
+	}
+
+	return requestInfo, true
 }
 
 func UnaryRequestContextClientInterceptor(
