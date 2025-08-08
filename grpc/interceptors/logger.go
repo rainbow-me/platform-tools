@@ -191,7 +191,6 @@ func determineLogLevel(config *LoggingInterceptorConfig, err error) logger.Level
 	return config.ErrorLogLevel
 }
 
-// buildStatusLogFields creates log fields for gRPC status and error information
 func buildStatusLogFields(config *LoggingInterceptorConfig, err error) []zapcore.Field {
 	var fields []zapcore.Field
 
@@ -203,24 +202,21 @@ func buildStatusLogFields(config *LoggingInterceptorConfig, err error) []zapcore
 
 	if config.LogErrorDetails {
 		details := statusValue.Details()
-		if len(details) > 0 {
-			fields = append(
-				fields,
-				zap.Array(
-					grpcErrDetailsKey,
-					zapcore.ArrayMarshalerFunc(func(arr zapcore.ArrayEncoder) error {
-						for _, d := range details {
-							if pb, ok := d.(proto.Message); ok {
-								_ = arr.AppendObject(&pbZapField{pb})
-							} else {
-								_ = arr.AppendReflected(d)
-							}
+		fields = append(fields,
+			zap.Array(grpcErrDetailsKey, zapcore.ArrayMarshalerFunc(func(arr zapcore.ArrayEncoder) error {
+				for _, d := range details {
+					if pb, ok := d.(proto.Message); ok {
+						clonedMsg := proto.Clone(pb)
+						for i := range config.LogParamsBlocklist {
+							clonedMsg = pruneFields(clonedMsg, &config.LogParamsBlocklist[i])
 						}
-						return nil
-					}),
-				),
-			)
-		}
+						_ = arr.AppendObject(&pbZapField{clonedMsg})
+					} else {
+						_ = arr.AppendReflected(d)
+					}
+				}
+				return nil
+			})))
 	}
 
 	return fields
