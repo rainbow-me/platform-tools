@@ -17,8 +17,6 @@ const (
 	StacktraceKey = "stacktrace"
 )
 
-type Level zapcore.Level
-
 var (
 	zLog   *Logger
 	errLog error
