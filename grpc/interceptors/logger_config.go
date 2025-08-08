@@ -65,6 +65,12 @@ func LogResponses(v bool) LoggingInterceptorOption {
 	}
 }
 
+func LogErrDetails(v bool) LoggingInterceptorOption {
+	return func(o *LoggingInterceptorConfig) {
+		o.LogErrorDetails = v
+	}
+}
+
 func LogLevel(level logger.Level) LoggingInterceptorOption {
 	return func(o *LoggingInterceptorConfig) {
 		o.LogLevel = level

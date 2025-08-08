@@ -59,10 +59,11 @@ func WithLoggingOptions(opts ...LoggingInterceptorOption) ConfigOption {
 // Convenience logging configuration functions
 
 // WithBasicLogging enables logging with basic configuration
-func WithBasicLogging(enabled bool, level logger.Level) ConfigOption {
+func WithBasicLogging(enabled bool, logErrDetails bool, level logger.Level) ConfigOption {
 	return WithLoggingOptions(
 		LogEnabled(enabled),
 		LogLevel(level),
+		LogErrDetails(logErrDetails),
 		ErrorLogLevel(logger.ErrorLevel),
 		LogRequests(true),
 		LogResponses(false),
@@ -223,7 +224,7 @@ func NewDefaultClientUnaryChain(
 func NewProductionServerChain(serviceName, environment string, l *logger.Logger) *UnaryServerInterceptorChain {
 	return NewDefaultServerUnaryChain(serviceName, environment, l,
 		WithRequestTimeout(30*time.Second),
-		WithBasicLogging(true, logger.InfoLevel),
+		WithBasicLogging(true, true, logger.InfoLevel),
 		WithPanicRecovery(),
 		WithLoggingOptions(WithSkippedLogsByMethods(healthCheckMethod)),
 	)
@@ -242,7 +243,7 @@ func NewDevelopmentServerChain(serviceName, environment string, l *logger.Logger
 // NewMinimalServerChain creates a minimal server interceptor chain for testing
 func NewMinimalServerChain(serviceName, environment string, l *logger.Logger) *UnaryServerInterceptorChain {
 	return NewDefaultServerUnaryChain(serviceName, environment, l,
-		WithBasicLogging(false, logger.InfoLevel),
+		WithBasicLogging(false, false, logger.InfoLevel),
 		WithPanicRecovery(),
 	)
 }
