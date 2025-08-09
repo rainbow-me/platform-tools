@@ -55,14 +55,13 @@ func WithClientProps(code int32, message string, details []*anypb.Any) ServiceEr
 	}
 }
 
-// NewServiceError wraps an error in a gRPC status, with details set to a common.BackendServiceError.
+// NewServiceError creates a gRPC status error with structured error details.
+// This function is intended for use in the service/inbound layer to convert
+// internal errors into properly formatted gRPC errors with detailed metadata.
 //
-// Publicly exposed:
-// - code: The gRPC code corresponding to the status (e.g. codes.NotFound).
-// - internalErrCode: The common_api global error.
-//
-// Exposed only internally (for debugging):
-// - message: The internal message used for debugging, not forwarded to client.
+// This should NOT be used for domain-layer errors, which should remain
+// framework-agnostic. Domain errors should be translated to service errors
+// at the service boundary.
 func NewServiceError(code codes.Code, message string, opts ...ServiceErrorOption) error {
 	backendErr := &ServiceErrorWrapper{
 		Detail: &errorpb.BackendServiceError{
