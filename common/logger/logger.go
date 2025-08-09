@@ -31,8 +31,8 @@ func NewLogger(zap *zap.Logger) *Logger {
 	return &Logger{zap: zap}
 }
 
-func (l *Logger) Log(lvl zapcore.Level, msg string, fields ...Field) {
-	l.zap.Log(lvl, msg, fields...)
+func (l *Logger) Log(lvl Level, msg string, fields ...Field) {
+	l.zap.Log(zapcore.Level(lvl), msg, fields...)
 }
 
 func (l *Logger) Info(msg string, fields ...Field) {

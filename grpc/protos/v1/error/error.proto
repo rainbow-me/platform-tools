@@ -1,0 +1,47 @@
+syntax = "proto3";
+package error;
+option go_package = "github.com/rainbow-me/platform-tools/grpc/protos/v1/error";
+import "google/protobuf/any.proto";
+
+// BackendServiceError is returned from every service when an error occurs.
+// It should be embedded in the standard ServiceError.error.details field.
+message BackendServiceError {
+
+  // Public contains client-safe error details.
+  // This section may be propagated to clients (e.g., frontend or mobile).
+  message Public {
+    // Internal Rainbow error code, defined in common_api.
+    // Not to be confused with gRPC status code or HTTP status code.
+    // Whether this is propagated to the frontend is determined by the gateway.
+    // not using enum InternalErrorCode here to avoid circular dependency issues.
+    int32 internal_error_code = 1;
+
+    // Optional custom message that overrides the default generic message in the gateway.
+    optional string custom_message = 2;
+
+    // Additional metadata or structured error context (e.g., timestamps, debug data).
+    repeated google.protobuf.Any details = 3;
+  }
+
+  // Private contains internal error details meant for debugging and logs.
+  // This section must never be sent to clients.
+  message Private {
+    // Human-readable explanation of the error, e.g. "Wallet not found".
+    string message = 1;
+
+    // Logical error category (e.g. "Wallet", "User", "Payment").
+    string error_type = 2;
+
+    // Raw internal error string. May include wrapped errors or stack traces.
+    string raw_error = 3;
+
+    // Optional key-value metadata for debugging.
+    map<string, string> metadata = 4;
+  }
+
+  // Public error info (safe for external consumption).
+  Public public = 1;
+
+  // Private error info (for internal use only).
+  Private private = 2;
+}

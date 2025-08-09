@@ -20,6 +20,7 @@ import (
 
 	"github.com/rainbow-me/platform-tools/common/logger"
 	"github.com/rainbow-me/platform-tools/grpc/correlation"
+	"github.com/rainbow-me/platform-tools/grpc/errors"
 	internalmetadata "github.com/rainbow-me/platform-tools/grpc/metadata"
 )
 
@@ -31,12 +32,14 @@ const (
 	spanIDKey     = "dd.span_id"
 
 	// Request context information
-	isNewTraceKey = "is_new_trace"
-	clientIDKey   = "client_id"
-	requestIDKey  = "request_id"
-	serviceKey    = "grpc_service"
-	methodKey     = "grpc_method"
-	grpcStatusKey = "grpc_status"
+	isNewTraceKey     = "is_new_trace"
+	clientIDKey       = "client_id"
+	requestIDKey      = "request_id"
+	serviceKey        = "grpc_service"
+	methodKey         = "grpc_method"
+	grpcStatusKey     = "grpc_status"
+	grpcMessageKey    = "grpc_message"
+	grpcErrDetailsKey = "grpc_error_details"
 
 	// Request/response payloads
 	requestKey  = "request"
@@ -89,6 +92,14 @@ func logWithContext(
 
 	executionDuration := time.Since(startTime)
 
+	// Check if logging should be skipped based on environment and gRPC status code
+	st := status.Convert(err)
+	if skipCodes, ok := config.skipLoggingByEnvAndCode[config.Environment]; ok {
+		if _, shouldSkip := skipCodes[st.Code()]; shouldSkip {
+			return resp, err
+		}
+	}
+
 	// Build log fields for this specific request
 	logFields := buildRequestLogFields(config, req, resp, executionDuration)
 
@@ -96,7 +107,7 @@ func logWithContext(
 	logLevel := determineLogLevel(config, err)
 
 	// Add gRPC status and error information
-	logFields = append(logFields, buildStatusLogFields(err)...)
+	logFields = append(logFields, buildStatusLogFields(config, err)...)
 
 	// Add client and trace information from metadata
 	logFields = append(logFields, buildMetadataLogFields(ctx)...)
@@ -108,8 +119,8 @@ func logWithContext(
 }
 
 // buildBaseLogFields creates the base log fields that are common to all requests
-func buildBaseLogFields(ctx context.Context, grpcService, grpcMethod string) []zapcore.Field {
-	var fields []zapcore.Field
+func buildBaseLogFields(ctx context.Context, grpcService, grpcMethod string) []logger.Field {
+	var fields []logger.Field
 
 	// Add trace information if available
 	if span, ok := tracer.SpanFromContext(ctx); ok {
@@ -146,8 +157,8 @@ func buildRequestLogFields(
 	config *LoggingInterceptorConfig,
 	req, resp interface{},
 	duration time.Duration,
-) []zapcore.Field {
-	var fields []zapcore.Field
+) []logger.Field {
+	var fields []logger.Field
 
 	// Add request payload if logging is enabled
 	if config.LogParams || config.LogRequests {
@@ -166,7 +177,7 @@ func buildRequestLogFields(
 }
 
 // determineLogLevel determines the appropriate log level based on error status
-func determineLogLevel(config *LoggingInterceptorConfig, err error) zapcore.Level {
+func determineLogLevel(config *LoggingInterceptorConfig, err error) logger.Level {
 	if err == nil {
 		return config.LogLevel
 	}
@@ -181,24 +192,44 @@ func determineLogLevel(config *LoggingInterceptorConfig, err error) zapcore.Leve
 	return config.ErrorLogLevel
 }
 
-// buildStatusLogFields creates log fields for gRPC status and error information
-func buildStatusLogFields(err error) []zapcore.Field {
-	var fields []zapcore.Field
+func buildStatusLogFields(config *LoggingInterceptorConfig, err error) []logger.Field {
+	var fields []logger.Field
 
 	statusValue := status.Convert(err)
-	fields = append(fields, zap.String(grpcStatusKey, statusValue.Code().String()))
+	fields = append(fields,
+		zap.String(grpcStatusKey, statusValue.Code().String()),
+		zap.String(grpcMessageKey, statusValue.Message()),
+	)
 
-	// Add error details if present
-	if err != nil {
-		fields = append(fields, zap.Error(err))
+	if config.LogErrorDetails {
+		backendErr, _ := errors.ParseBackendServiceError(err)
+		logDetails := statusValue.Details()
+		if backendErr != nil {
+			logDetails = []interface{}{backendErr}
+		}
+		fields = append(fields,
+			zap.Array(grpcErrDetailsKey, zapcore.ArrayMarshalerFunc(func(arr zapcore.ArrayEncoder) error {
+				for _, d := range logDetails {
+					if pb, ok := d.(proto.Message); ok {
+						clonedMsg := proto.Clone(pb)
+						for i := range config.LogParamsBlocklist {
+							clonedMsg = pruneFields(clonedMsg, &config.LogParamsBlocklist[i])
+						}
+						_ = arr.AppendObject(&pbZapField{clonedMsg})
+					} else {
+						_ = arr.AppendReflected(d)
+					}
+				}
+				return nil
+			})))
 	}
 
 	return fields
 }
 
 // buildMetadataLogFields extracts client and trace information from gRPC metadata
-func buildMetadataLogFields(ctx context.Context) []zapcore.Field {
-	var fields []zapcore.Field
+func buildMetadataLogFields(ctx context.Context) []logger.Field {
+	var fields []logger.Field
 
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -222,7 +253,7 @@ func buildMetadataLogFields(ctx context.Context) []zapcore.Field {
 
 // GrpcMessageField creates a zap field for gRPC messages with optional field masking.
 // It clones the message to avoid modifying the original and applies any configured masks.
-func GrpcMessageField(key string, message interface{}, masks []fieldmaskpb.FieldMask) zapcore.Field {
+func GrpcMessageField(key string, message interface{}, masks []fieldmaskpb.FieldMask) logger.Field {
 	msg, ok := message.(proto.Message)
 	if !ok {
 		return PbField(key, message)
@@ -269,7 +300,7 @@ func GetServiceAndMethod(fullMethod string) (string, string) {
 
 // PbField wraps a protobuf message in a zap Field for structured logging.
 // Use this to embed protobuf messages in your structured zap logs.
-func PbField(key string, pb interface{}) zapcore.Field {
+func PbField(key string, pb interface{}) logger.Field {
 	if pbMsg, ok := pb.(proto.Message); ok {
 		return zap.Object(key, &pbZapField{pbMsg})
 	}

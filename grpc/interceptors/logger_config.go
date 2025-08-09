@@ -1,30 +1,36 @@
 package interceptors
 
 import (
-	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
+
+	"github.com/rainbow-me/platform-tools/common/logger"
 )
 
 const (
-	DefaultInterceptorLogLevel      zapcore.Level = zapcore.InfoLevel
-	DefaultInterceptorErrorLogLevel zapcore.Level = zapcore.WarnLevel
+	DefaultInterceptorLogLevel      logger.Level = logger.InfoLevel
+	DefaultInterceptorErrorLogLevel logger.Level = logger.WarnLevel
 )
 
 type LoggingInterceptorConfig struct {
+	Environment        string
 	LogEnabled         bool
 	LogParams          bool // Logs both request and response.
 	LogRequests        bool
 	LogResponses       bool
+	LogErrorDetails    bool // Logs error details in the response.
 	LogParamsBlocklist []fieldmaskpb.FieldMask
-	LogLevel           zapcore.Level
-	ErrorLogLevel      zapcore.Level
+	LogLevel           logger.Level
+	ErrorLogLevel      logger.Level
 
 	// If set, overrides ErrorLogLevel for specified gRPC codes. All other codes will be logged with ErrorLogLevel.
 	// Setting code.OK here will have no effect (LogLevel will still be followed)
-	GrpcCodeLogLevel map[codes.Code]zapcore.Level
+	GrpcCodeLogLevel map[codes.Code]logger.Level
 
 	skipLoggingByMethod map[string]struct{}
+
+	// skip logging by environment and code
+	skipLoggingByEnvAndCode map[string]map[codes.Code]struct{}
 }
 
 type LoggingInterceptorOption func(*LoggingInterceptorConfig)
@@ -32,6 +38,12 @@ type LoggingInterceptorOption func(*LoggingInterceptorConfig)
 func LogParams(v bool) LoggingInterceptorOption {
 	return func(o *LoggingInterceptorConfig) {
 		o.LogParams = v
+	}
+}
+
+func Environment(e string) LoggingInterceptorOption {
+	return func(o *LoggingInterceptorConfig) {
+		o.Environment = e
 	}
 }
 
@@ -53,19 +65,25 @@ func LogResponses(v bool) LoggingInterceptorOption {
 	}
 }
 
-func LogLevel(level zapcore.Level) LoggingInterceptorOption {
+func LogErrDetails(v bool) LoggingInterceptorOption {
+	return func(o *LoggingInterceptorConfig) {
+		o.LogErrorDetails = v
+	}
+}
+
+func LogLevel(level logger.Level) LoggingInterceptorOption {
 	return func(o *LoggingInterceptorConfig) {
 		o.LogLevel = level
 	}
 }
 
-func GrpcCodeLogLevel(errorCodeLogLevel map[codes.Code]zapcore.Level) LoggingInterceptorOption {
+func GrpcCodeLogLevel(errorCodeLogLevel map[codes.Code]logger.Level) LoggingInterceptorOption {
 	return func(o *LoggingInterceptorConfig) {
 		o.GrpcCodeLogLevel = errorCodeLogLevel
 	}
 }
 
-func ErrorLogLevel(level zapcore.Level) LoggingInterceptorOption {
+func ErrorLogLevel(level logger.Level) LoggingInterceptorOption {
 	return func(o *LoggingInterceptorConfig) {
 		o.ErrorLogLevel = level
 	}
@@ -78,6 +96,20 @@ func WithSkippedLogsByMethods(methods ...string) LoggingInterceptorOption {
 	}
 	return func(o *LoggingInterceptorConfig) {
 		o.skipLoggingByMethod = skipLoggingByMethod
+	}
+}
+
+func WithSkippedLogsForEnv(env string, grpcCodes ...codes.Code) LoggingInterceptorOption {
+	return func(o *LoggingInterceptorConfig) {
+		if o.skipLoggingByEnvAndCode == nil {
+			o.skipLoggingByEnvAndCode = make(map[string]map[codes.Code]struct{})
+		}
+		if _, exists := o.skipLoggingByEnvAndCode[env]; !exists {
+			o.skipLoggingByEnvAndCode[env] = make(map[codes.Code]struct{})
+		}
+		for _, code := range grpcCodes {
+			o.skipLoggingByEnvAndCode[env][code] = struct{}{}
+		}
 	}
 }
 
