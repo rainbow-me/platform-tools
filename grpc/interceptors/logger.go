@@ -20,6 +20,7 @@ import (
 
 	"github.com/rainbow-me/platform-tools/common/logger"
 	"github.com/rainbow-me/platform-tools/grpc/correlation"
+	"github.com/rainbow-me/platform-tools/grpc/errors"
 	internalmetadata "github.com/rainbow-me/platform-tools/grpc/metadata"
 )
 
@@ -201,10 +202,14 @@ func buildStatusLogFields(config *LoggingInterceptorConfig, err error) []zapcore
 	)
 
 	if config.LogErrorDetails {
-		details := statusValue.Details()
+		backendErr, _ := errors.ParseBackendServiceError(err)
+		logDetails := statusValue.Details()
+		if backendErr != nil {
+			logDetails = []interface{}{backendErr}
+		}
 		fields = append(fields,
 			zap.Array(grpcErrDetailsKey, zapcore.ArrayMarshalerFunc(func(arr zapcore.ArrayEncoder) error {
-				for _, d := range details {
+				for _, d := range logDetails {
 					if pb, ok := d.(proto.Message); ok {
 						clonedMsg := proto.Clone(pb)
 						for i := range config.LogParamsBlocklist {

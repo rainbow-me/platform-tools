@@ -10,13 +10,13 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
-	"github.com/rainbow-me/protobuf-registry/schemas/common/gen/v1/go/common"
+	errorpb "github.com/rainbow-me/platform-tools/grpc/protos/gen/go/error"
 )
 
 var errInvalidErrorType = errors.New("invalid error type")
 
 type ServiceErrorWrapper struct {
-	Detail *common.BackendServiceError
+	Detail *errorpb.BackendServiceError
 }
 
 type ServiceErrorOption func(*ServiceErrorWrapper)
@@ -45,7 +45,7 @@ func WithType(t string) ServiceErrorOption {
 }
 
 // WithClientProps adds the Public.CustomMessage to BackendServiceError.
-func WithClientProps(code common.InternalErrorCode, message string, details []*anypb.Any) ServiceErrorOption {
+func WithClientProps(code int32, message string, details []*anypb.Any) ServiceErrorOption {
 	return func(detail *ServiceErrorWrapper) {
 		detail.Detail.Public.InternalErrorCode = code
 		detail.Detail.Public.CustomMessage = &message
@@ -65,12 +65,12 @@ func WithClientProps(code common.InternalErrorCode, message string, details []*a
 // - message: The internal message used for debugging, not forwarded to client.
 func NewServiceError(code codes.Code, message string, opts ...ServiceErrorOption) error {
 	backendErr := &ServiceErrorWrapper{
-		Detail: &common.BackendServiceError{
-			Public: &common.BackendServiceError_Public{
-				InternalErrorCode: common.InternalErrorCode_INTERNAL_ERROR_CODE_UNSPECIFIED,
+		Detail: &errorpb.BackendServiceError{
+			Public: &errorpb.BackendServiceError_Public{
+				InternalErrorCode: 0,
 				CustomMessage:     nil, // Can be populated using WithCustomMessage
 			},
-			Private: &common.BackendServiceError_Private{
+			Private: &errorpb.BackendServiceError_Private{
 				Message:   message,
 				ErrorType: "",  // Can be populated using WithType
 				RawError:  "",  // Can be populated using WithOriginalError
@@ -96,14 +96,14 @@ func NewServiceError(code codes.Code, message string, opts ...ServiceErrorOption
 }
 
 // extractBackendError parses a gRPC status and attempts to extract a BackendServiceError from its details.
-func extractBackendError(statusProto *googleapistatus.Status) (*common.BackendServiceError, error) {
+func extractBackendError(statusProto *googleapistatus.Status) (*errorpb.BackendServiceError, error) {
 	details := statusProto.GetDetails()
 	if len(details) == 0 {
 		return nil, errInvalidErrorType
 	}
 
 	for _, detail := range details {
-		var backendErr common.BackendServiceError
+		var backendErr errorpb.BackendServiceError
 		if err := proto.Unmarshal(detail.GetValue(), &backendErr); err != nil {
 			continue // Ignore malformed entries and try the next
 		}
@@ -115,7 +115,7 @@ func extractBackendError(statusProto *googleapistatus.Status) (*common.BackendSe
 
 // ParseBackendServiceError extracts the custom BackendServiceError from a generic gRPC error.
 // Returns nil if the error does not contain a valid BackendServiceError detail.
-func ParseBackendServiceError(err error) (*common.BackendServiceError, error) {
+func ParseBackendServiceError(err error) (*errorpb.BackendServiceError, error) {
 	st := status.Convert(err)
 	if st == nil {
 		return nil, fmt.Errorf("failed to convert error to gRPC status: %w", err)
