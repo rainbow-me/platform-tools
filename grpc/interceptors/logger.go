@@ -119,8 +119,8 @@ func logWithContext(
 }
 
 // buildBaseLogFields creates the base log fields that are common to all requests
-func buildBaseLogFields(ctx context.Context, grpcService, grpcMethod string) []zapcore.Field {
-	var fields []zapcore.Field
+func buildBaseLogFields(ctx context.Context, grpcService, grpcMethod string) []logger.Field {
+	var fields []logger.Field
 
 	// Add trace information if available
 	if span, ok := tracer.SpanFromContext(ctx); ok {
@@ -157,8 +157,8 @@ func buildRequestLogFields(
 	config *LoggingInterceptorConfig,
 	req, resp interface{},
 	duration time.Duration,
-) []zapcore.Field {
-	var fields []zapcore.Field
+) []logger.Field {
+	var fields []logger.Field
 
 	// Add request payload if logging is enabled
 	if config.LogParams || config.LogRequests {
@@ -193,7 +193,7 @@ func determineLogLevel(config *LoggingInterceptorConfig, err error) logger.Level
 }
 
 func buildStatusLogFields(config *LoggingInterceptorConfig, err error) []logger.Field {
-	var fields []zapcore.Field
+	var fields []logger.Field
 
 	statusValue := status.Convert(err)
 	fields = append(fields,
@@ -228,8 +228,8 @@ func buildStatusLogFields(config *LoggingInterceptorConfig, err error) []logger.
 }
 
 // buildMetadataLogFields extracts client and trace information from gRPC metadata
-func buildMetadataLogFields(ctx context.Context) []zapcore.Field {
-	var fields []zapcore.Field
+func buildMetadataLogFields(ctx context.Context) []logger.Field {
+	var fields []logger.Field
 
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -253,7 +253,7 @@ func buildMetadataLogFields(ctx context.Context) []zapcore.Field {
 
 // GrpcMessageField creates a zap field for gRPC messages with optional field masking.
 // It clones the message to avoid modifying the original and applies any configured masks.
-func GrpcMessageField(key string, message interface{}, masks []fieldmaskpb.FieldMask) zapcore.Field {
+func GrpcMessageField(key string, message interface{}, masks []fieldmaskpb.FieldMask) logger.Field {
 	msg, ok := message.(proto.Message)
 	if !ok {
 		return PbField(key, message)
@@ -300,7 +300,7 @@ func GetServiceAndMethod(fullMethod string) (string, string) {
 
 // PbField wraps a protobuf message in a zap Field for structured logging.
 // Use this to embed protobuf messages in your structured zap logs.
-func PbField(key string, pb interface{}) zapcore.Field {
+func PbField(key string, pb interface{}) logger.Field {
 	if pbMsg, ok := pb.(proto.Message); ok {
 		return zap.Object(key, &pbZapField{pbMsg})
 	}
