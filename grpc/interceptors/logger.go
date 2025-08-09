@@ -192,7 +192,7 @@ func determineLogLevel(config *LoggingInterceptorConfig, err error) logger.Level
 	return config.ErrorLogLevel
 }
 
-func buildStatusLogFields(config *LoggingInterceptorConfig, err error) []zapcore.Field {
+func buildStatusLogFields(config *LoggingInterceptorConfig, err error) []logger.Field {
 	var fields []zapcore.Field
 
 	statusValue := status.Convert(err)
