@@ -15,6 +15,8 @@ import (
 const (
 	MessageKey    = "message"
 	StacktraceKey = "stacktrace"
+	traceIDKey    = "dd.trace_id"
+	spanIDKey     = "dd.span_id"
 )
 
 var (

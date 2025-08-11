@@ -1,0 +1,40 @@
+package main
+
+import (
+	"context"
+	"log"
+
+	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
+	"github.com/go-resty/resty/v2"
+
+	"github.com/rainbow-me/platform-tools/common/logger"
+	"github.com/rainbow-me/platform-tools/http"
+)
+
+func main() {
+	if err := Run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func Run() error {
+	if err := tracer.Start(tracer.WithService("resty-playground")); err != nil {
+		return err
+	}
+	defer tracer.Stop()
+
+	client := resty.New()
+	http.InjectMiddlewares(client)
+
+	span := tracer.StartSpan("ping.request")
+	ctx := tracer.ContextWithSpan(context.Background(), span)
+
+	l, err := logger.Instance()
+	if err != nil {
+		return err
+	}
+	l.Info("Sending ping request", logger.String("trace_id", span.Context().TraceID()))
+
+	_, err = client.R().SetContext(ctx).Get("http://localhost:8080/ping")
+	return err
+}

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
-	"strconv"
 	"time"
 
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
@@ -19,17 +18,15 @@ import (
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
 	"github.com/rainbow-me/platform-tools/common/logger"
+	internalmetadata "github.com/rainbow-me/platform-tools/common/metadata"
 	"github.com/rainbow-me/platform-tools/grpc/correlation"
 	"github.com/rainbow-me/platform-tools/grpc/errors"
-	internalmetadata "github.com/rainbow-me/platform-tools/grpc/metadata"
 )
 
 // Structured logging field keys
 const (
 	// Request timing and identification
 	durationIDKey = "duration"
-	traceIDKey    = "dd.trace_id"
-	spanIDKey     = "dd.span_id"
 
 	// Request context information
 	isNewTraceKey     = "is_new_trace"
@@ -124,10 +121,7 @@ func buildBaseLogFields(ctx context.Context, grpcService, grpcMethod string) []l
 
 	// Add trace information if available
 	if span, ok := tracer.SpanFromContext(ctx); ok {
-		fields = append(fields,
-			zap.String(traceIDKey, span.Context().TraceID()),
-			zap.String(spanIDKey, strconv.FormatUint(span.Context().SpanID(), 10)),
-		)
+		fields = append(fields, logger.WithTrace(span.Context())...)
 	}
 
 	// Add correlation fields and service/method information

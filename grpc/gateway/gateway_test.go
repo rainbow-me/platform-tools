@@ -16,9 +16,9 @@ import (
 	"google.golang.org/grpc/metadata"
 
 	"github.com/rainbow-me/platform-tools/common/logger"
+	internalmetadata "github.com/rainbow-me/platform-tools/common/metadata"
 	"github.com/rainbow-me/platform-tools/common/test"
 	"github.com/rainbow-me/platform-tools/grpc/gateway"
-	internalmetadata "github.com/rainbow-me/platform-tools/grpc/metadata"
 	testpb "github.com/rainbow-me/platform-tools/grpc/protos/gen/go/test"
 )
 
