@@ -1,4 +1,4 @@
-package interceptors
+package gin
 
 import (
 	"fmt"
@@ -10,24 +10,14 @@ import (
 	"github.com/rainbow-me/platform-tools/common/logger"
 )
 
-const (
-	httpHandlerOp    = "http.handler"
-	ginComponentName = "gin"
-)
-
-func GinDefaultInterceptors() []gin.HandlerFunc {
-	return []gin.HandlerFunc{
-		GinTracingMiddleware,
-	}
-}
-
-// GinTracingMiddleware creates takes the trace id from http headers, or creates a new one if none found.
+// TracingMiddleware takes the trace id from http headers, or creates a new one if none found.
 // It then creates a new span and tags it appropriately with http route, method, url, response code, error, etc.
-func GinTracingMiddleware(c *gin.Context) {
+// Finally, it injects the trace/span ids in the context log fields.
+func TracingMiddleware(c *gin.Context) {
 	// We could have just used "github.com/DataDog/dd-trace-go/contrib/gin-gonic/gin/v2",
 	// but this middleware adds some extra useful tags
 	spanOpts := []tracer.StartSpanOption{
-		tracer.Tag(ext.Component, ginComponentName),
+		tracer.Tag(ext.Component, componentName),
 		tracer.Tag(ext.SpanType, ext.SpanTypeWeb),
 		tracer.Tag(ext.HTTPMethod, c.Request.Method),
 		tracer.Tag(ext.HTTPURL, c.Request.URL.String()),
@@ -58,8 +48,3 @@ func GinTracingMiddleware(c *gin.Context) {
 		span.SetTag(ext.Error, true)
 	}
 }
-
-// TODO error handling
-// TODO slow request
-
-// TODO correlation propagator?

@@ -8,24 +8,24 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/rainbow-me/platform-tools/common/logger"
-	internalhttp "github.com/rainbow-me/platform-tools/http"
+	gininterceptors "github.com/rainbow-me/platform-tools/http/interceptors/gin"
 )
 
 func main() {
-	if err := Run(); err != nil {
+	if err := run(); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func Run() error {
+func run() error {
 	if err := tracer.Start(tracer.WithService("gin-playground")); err != nil {
 		return err
 	}
 	defer tracer.Stop()
 
-	r := gin.Default()
+	r := gin.New()
 
-	r.Use(internalhttp.GinDefaultInterceptors()...)
+	r.Use(gininterceptors.DefaultInterceptors()...)
 
 	// Your handlers will automatically have tracing context
 	r.GET("/ping", func(c *gin.Context) {

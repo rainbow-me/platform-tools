@@ -1,4 +1,4 @@
-package interceptors
+package resty
 
 import (
 	"fmt"
@@ -17,15 +17,51 @@ const (
 	restyComponentName = "resty"
 )
 
-func InjectMiddlewares(client *resty.Client) {
-	before, after := RestyTracingMiddleware()
-	client.OnBeforeRequest(before)
-	client.OnAfterResponse(after)
+type interceptorCfg struct {
+	TracingEnabled     bool
+	CorrelationEnabled bool
+	// no timeout specified, that is handled by the underlying http client config
 }
 
-// RestyTracingMiddleware propagates traces from context to http headers.
+type InterceptorOpt func(*interceptorCfg)
+
+// WithCorrelationEnabled enables/disables correlation. Default is enabled.
+func WithCorrelationEnabled(enabled bool) InterceptorOpt {
+	return func(cfg *interceptorCfg) {
+		cfg.CorrelationEnabled = enabled
+	}
+}
+
+// WithTracingEnabled enables/disables tracing. Default is enabled.
+func WithTracingEnabled(enabled bool) InterceptorOpt {
+	return func(cfg *interceptorCfg) {
+		cfg.TracingEnabled = enabled
+	}
+}
+
+// InjectInterceptors injects all interceptors required to get Resty requests to propagate traces and correlation info.
+// Default behaviour can be changed by passing any of the WithXXX options.
+func InjectInterceptors(client *resty.Client, opts ...InterceptorOpt) {
+	cfg := &interceptorCfg{
+		TracingEnabled:     true,
+		CorrelationEnabled: true,
+	}
+	for _, opt := range opts {
+		opt(cfg)
+	}
+	if cfg.TracingEnabled {
+		before, after := TracingMiddleware()
+		client.OnBeforeRequest(before)
+		client.OnAfterResponse(after)
+	}
+	if cfg.CorrelationEnabled {
+		client.OnBeforeRequest(CorrelationMiddleware())
+	}
+}
+
+// TracingMiddleware propagates traces from context to http headers.
 // Also, creates a new span and tags it with the http method, url, status code etc.
-func RestyTracingMiddleware() (resty.RequestMiddleware, resty.ResponseMiddleware) {
+func TracingMiddleware() (resty.RequestMiddleware, resty.ResponseMiddleware) {
 	beforeRequest := func(c *resty.Client, req *resty.Request) error {
 		opts := []tracer.StartSpanOption{
 			tracer.SpanType(ext.SpanTypeHTTP),
@@ -74,14 +110,9 @@ func RestyTracingMiddleware() (resty.RequestMiddleware, resty.ResponseMiddleware
 	return beforeRequest, afterResponse
 }
 
-//func RestyCorrelationMiddleware() resty.RequestMiddleware {
-//	return func(c *resty.Client, req *resty.Request) error {
-//		// Generate a correlation header from the current context
-//		header := correlation.Generate(req.Context())
-//		// Add the correlation header to outgoing metadata if one was generated
-//		if header != "" {
-//			ctx = metadata.AppendToOutgoingContext(ctx, correlation.ContextCorrelationHeader, header)
-//		}
-//		// Continue with the actual gRPC call using the updated context
-//	}
-//}
+func CorrelationMiddleware() resty.RequestMiddleware {
+	return func(c *resty.Client, req *resty.Request) error {
+		// TODO implement
+		return nil
+	}
+}

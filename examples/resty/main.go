@@ -8,23 +8,23 @@ import (
 	"github.com/go-resty/resty/v2"
 
 	"github.com/rainbow-me/platform-tools/common/logger"
-	"github.com/rainbow-me/platform-tools/http"
+	restyinterceptors "github.com/rainbow-me/platform-tools/http/interceptors/resty"
 )
 
 func main() {
-	if err := Run(); err != nil {
+	if err := run(); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func Run() error {
+func run() error {
 	if err := tracer.Start(tracer.WithService("resty-playground")); err != nil {
 		return err
 	}
 	defer tracer.Stop()
 
 	client := resty.New()
-	http.InjectMiddlewares(client)
+	restyinterceptors.InjectInterceptors(client)
 
 	span := tracer.StartSpan("ping.request")
 	ctx := tracer.ContextWithSpan(context.Background(), span)
