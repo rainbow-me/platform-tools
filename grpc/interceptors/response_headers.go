@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
-	internalmetadata "github.com/rainbow-me/platform-tools/grpc/metadata"
+	internalmetadata "github.com/rainbow-me/platform-tools/common/metadata"
 )
 
 // ResponseHeadersInterceptor adds trace and request ID headers to gRPC responses
@@ -20,14 +20,14 @@ func ResponseHeadersInterceptor() grpc.UnaryServerInterceptor {
 		handler grpc.UnaryHandler,
 	) (interface{}, error) {
 		// Extract headers before calling the handler
-		traceID, spanID := extractDataDogIDs(ctx)
+		traceID, _ := extractDataDogIDs(ctx)
 		rainbowRequestID := extractRainbowRequestID(ctx)
 
 		// Call the actual handler
 		resp, err := handler(ctx, req)
 
 		// Add headers to response metadata
-		addResponseHeaders(ctx, traceID, spanID, rainbowRequestID)
+		addResponseHeaders(ctx, traceID, rainbowRequestID)
 
 		return resp, err
 	}
@@ -69,17 +69,13 @@ func extractRainbowRequestID(ctx context.Context) string {
 }
 
 // addResponseHeaders adds headers to the outgoing response metadata
-func addResponseHeaders(ctx context.Context, traceID, spanID, rainbowRequestID string) {
+func addResponseHeaders(ctx context.Context, traceID, rainbowRequestID string) {
 	// Prepare mdHeaders to send
 	mdHeaders := metadata.Pairs()
 
 	// Add DataDog trace mdHeaders if available
 	if traceID != "" {
 		mdHeaders = metadata.Join(mdHeaders, metadata.Pairs(internalmetadata.HeaderXTraceID, traceID))
-	}
-
-	if spanID != "" {
-		mdHeaders = metadata.Join(mdHeaders, metadata.Pairs(internalmetadata.HeaderXSpanID, spanID))
 	}
 
 	// Add rainbow request ID if available

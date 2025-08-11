@@ -9,7 +9,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc/metadata"
 
-	internalmetadata "github.com/rainbow-me/platform-tools/grpc/metadata"
+	internalmetadata "github.com/rainbow-me/platform-tools/common/metadata"
 )
 
 // Standard correlation keys

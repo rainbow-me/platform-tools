@@ -7,7 +7,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
-	internalmetadata "github.com/rainbow-me/platform-tools/grpc/metadata"
+	internalmetadata "github.com/rainbow-me/platform-tools/common/metadata"
 )
 
 const UpstreamServiceHeaderKey = internalmetadata.HeaderClientTaggingHeader

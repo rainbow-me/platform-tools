@@ -1,8 +1,10 @@
 package logger
 
 import (
+	"strconv"
 	"strings"
 
+	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -65,5 +67,12 @@ func LevelFromString(s string) Level {
 		return FatalLevel
 	default:
 		return InfoLevel // default to info
+	}
+}
+
+func WithTrace(ctx *tracer.SpanContext) []Field {
+	return []Field{
+		String(traceIDKey, ctx.TraceID()),
+		String(spanIDKey, strconv.FormatUint(ctx.SpanID(), 10)),
 	}
 }

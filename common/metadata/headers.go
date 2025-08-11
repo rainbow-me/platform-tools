@@ -18,11 +18,6 @@ const (
 	// multiple services and create a complete trace of the request journey.
 	// Used with Datadog APM
 	HeaderXTraceID = "x-trace-id"
-
-	// HeaderXSpanID is used for distributed tracing to identify individual spans
-	// within a trace. A span represents a single operation or unit of work within
-	// a trace, such as a database query, HTTP request, or function call
-	HeaderXSpanID = "x-span-id"
 )
 
 // Authentication Headers
@@ -43,7 +38,7 @@ const (
 
 // HeaderConfig defines which headers to extract and forward
 type HeaderConfig struct {
-	// HeadersToForward specifies which HTTP headers to forward as gRPC metadata
+	// HeadersToForward specifies which HTTP headers to forward as metadata
 	HeadersToForward []string
 }
 
@@ -52,7 +47,6 @@ func GetHeadersToForward() []string {
 		HeaderXRequestID,
 		HeaderXCorrelationID,
 		HeaderXTraceID,
-		HeaderXSpanID,
 		HeaderAuthorization,
 		HeaderClientTaggingHeader,
 	}
