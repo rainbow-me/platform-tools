@@ -39,8 +39,11 @@ func WithDebugStack(enabled bool) Option {
 	}
 }
 
+type StopFunc func()
+
 // InitObservability initializes our observability stack with sensible defaults that can be overridden.
-func InitObservability(serviceName, env string, log *logger.Logger, opts ...Option) {
+// Don't forget to add a shutdown hook for deferred calling of the returned StopFunc.
+func InitObservability(serviceName, env string, log *logger.Logger, opts ...Option) StopFunc {
 	log.Info("Starting tracer")
 	cfg := &config{
 		MetricsEnabled:   true,
@@ -64,6 +67,11 @@ func InitObservability(serviceName, env string, log *logger.Logger, opts ...Opti
 		log.Error("Failed to start tracer", logger.Error(err))
 	}
 	// other observability and telemetry frameworks can be added here if needed
+
+	return func() {
+		log.Info("Stopping tracer")
+		tracer.Stop()
+	}
 }
 
 type tracerLogger logger.Logger

@@ -62,7 +62,7 @@ func InjectInterceptors(client *resty.Client, opts ...InterceptorOpt) {
 // TracingMiddleware propagates traces from context to http headers.
 // Also, creates a new span and tags it with the http method, url, status code etc.
 func TracingMiddleware() (resty.RequestMiddleware, resty.ResponseMiddleware) {
-	beforeRequest := func(c *resty.Client, req *resty.Request) error {
+	beforeRequest := func(_ *resty.Client, req *resty.Request) error {
 		opts := []tracer.StartSpanOption{
 			tracer.SpanType(ext.SpanTypeHTTP),
 			tracer.Tag(ext.HTTPMethod, req.Method),
@@ -90,7 +90,7 @@ func TracingMiddleware() (resty.RequestMiddleware, resty.ResponseMiddleware) {
 		return nil
 	}
 
-	afterResponse := func(c *resty.Client, resp *resty.Response) error {
+	afterResponse := func(_ *resty.Client, resp *resty.Response) error {
 		span, ok := tracer.SpanFromContext(resp.Request.Context())
 		if !ok {
 			return nil // No span found, skip
@@ -111,7 +111,7 @@ func TracingMiddleware() (resty.RequestMiddleware, resty.ResponseMiddleware) {
 }
 
 func CorrelationMiddleware() resty.RequestMiddleware {
-	return func(c *resty.Client, req *resty.Request) error {
+	return func(_ *resty.Client, _ *resty.Request) error {
 		// TODO implement
 		return nil
 	}
