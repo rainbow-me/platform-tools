@@ -4,7 +4,6 @@ go 1.23.10
 
 require (
 	github.com/DataDog/dd-trace-go/contrib/google.golang.org/grpc/v2 v2.1.0
-	github.com/DataDog/dd-trace-go/contrib/net/http/v2 v2.2.2
 	github.com/DataDog/dd-trace-go/v2 v2.2.2
 	github.com/cockroachdb/errors v1.12.0
 	github.com/gin-gonic/gin v1.9.1
