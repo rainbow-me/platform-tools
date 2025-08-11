@@ -4,7 +4,6 @@ import (
 	"time"
 
 	grpctrace "github.com/DataDog/dd-trace-go/contrib/google.golang.org/grpc/v2"
-	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc/codes"
 
 	"github.com/rainbow-me/platform-tools/common/logger"
@@ -60,11 +59,12 @@ func WithLoggingOptions(opts ...LoggingInterceptorOption) ConfigOption {
 // Convenience logging configuration functions
 
 // WithBasicLogging enables logging with basic configuration
-func WithBasicLogging(enabled bool, level zapcore.Level) ConfigOption {
+func WithBasicLogging(enabled bool, logErrDetails bool, level logger.Level) ConfigOption {
 	return WithLoggingOptions(
 		LogEnabled(enabled),
 		LogLevel(level),
-		ErrorLogLevel(zapcore.ErrorLevel),
+		LogErrDetails(logErrDetails),
+		ErrorLogLevel(logger.ErrorLevel),
 		LogRequests(true),
 		LogResponses(false),
 		LogParams(false),
@@ -75,8 +75,8 @@ func WithBasicLogging(enabled bool, level zapcore.Level) ConfigOption {
 func WithDetailedLogging() ConfigOption {
 	return WithLoggingOptions(
 		LogEnabled(true),
-		LogLevel(zapcore.InfoLevel),
-		ErrorLogLevel(zapcore.ErrorLevel),
+		LogLevel(logger.InfoLevel),
+		ErrorLogLevel(logger.ErrorLevel),
 		LogParams(true),
 		LogRequests(true),
 		LogResponses(true),
@@ -101,14 +101,15 @@ func NewConfig(serviceName, environment string, opts ...ConfigOption) *Config {
 		Environment:          environment,
 		PanicRecoveryEnabled: true,
 		LoggingOptions: []LoggingInterceptorOption{
+			Environment(environment),
 			LogEnabled(true),
-			LogLevel(zapcore.InfoLevel),
+			LogLevel(logger.InfoLevel),
 			LogRequests(false),
 			LogResponses(false),                         // Default to false to avoid logging sensitive data
 			WithSkippedLogsByMethods(healthCheckMethod), // Skip health check method by default
 			GrpcCodeLogLevel(
-				map[codes.Code]zapcore.Level{ //nolint:exhaustive
-					codes.Canceled: zapcore.WarnLevel, // Handle cancellations as warnings
+				map[codes.Code]logger.Level{ //nolint:exhaustive
+					codes.Canceled: logger.WarnLevel, // Handle cancellations as warnings
 				},
 			),
 		},
@@ -220,29 +221,29 @@ func NewDefaultClientUnaryChain(
 // Convenience functions for common configurations
 
 // NewProductionServerChain creates a production-ready server interceptor chain
-func NewProductionServerChain(serviceName, environment string, logger *logger.Logger) *UnaryServerInterceptorChain {
-	return NewDefaultServerUnaryChain(serviceName, environment, logger,
+func NewProductionServerChain(serviceName, environment string, l *logger.Logger) *UnaryServerInterceptorChain {
+	return NewDefaultServerUnaryChain(serviceName, environment, l,
 		WithRequestTimeout(30*time.Second),
-		WithBasicLogging(true, zapcore.InfoLevel),
+		WithBasicLogging(true, true, logger.InfoLevel),
 		WithPanicRecovery(),
 		WithLoggingOptions(WithSkippedLogsByMethods(healthCheckMethod)),
 	)
 }
 
 // NewDevelopmentServerChain creates a development-friendly server interceptor chain
-func NewDevelopmentServerChain(serviceName, environment string, logger *logger.Logger) *UnaryServerInterceptorChain {
-	return NewDefaultServerUnaryChain(serviceName, environment, logger,
+func NewDevelopmentServerChain(serviceName, environment string, l *logger.Logger) *UnaryServerInterceptorChain {
+	return NewDefaultServerUnaryChain(serviceName, environment, l,
 		WithRequestTimeout(60*time.Second),
 		WithDetailedLogging(),
 		WithPanicRecovery(),
-		WithLoggingOptions(LogLevel(zapcore.DebugLevel)),
+		WithLoggingOptions(LogLevel(logger.DebugLevel)),
 	)
 }
 
 // NewMinimalServerChain creates a minimal server interceptor chain for testing
-func NewMinimalServerChain(serviceName, environment string, logger *logger.Logger) *UnaryServerInterceptorChain {
-	return NewDefaultServerUnaryChain(serviceName, environment, logger,
-		WithBasicLogging(false, zapcore.InfoLevel),
+func NewMinimalServerChain(serviceName, environment string, l *logger.Logger) *UnaryServerInterceptorChain {
+	return NewDefaultServerUnaryChain(serviceName, environment, l,
+		WithBasicLogging(false, false, logger.InfoLevel),
 		WithPanicRecovery(),
 	)
 }
