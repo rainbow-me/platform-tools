@@ -7,7 +7,6 @@ import (
 
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"github.com/google/uuid"
-	"google.golang.org/grpc/metadata"
 )
 
 // RequestInfo contains extracted information from gRPC metadata
@@ -30,38 +29,48 @@ type RequestInfo struct {
 
 // Parser extracts RequestInfo from gRPC metadata
 type Parser struct {
-	includeAllHeaders bool
-	maskSensitive     bool
+	opt         RequestParserOpt
+	extractFunc ExtractFunc
+	injectFunc  InjectFunc
+}
+
+type RequestParserOpt struct {
+	IncludeAllHeaders bool
+	MaskSensitive     bool
 }
 
 // NewRequestParser creates a new metadata parser
-func NewRequestParser(includeAllHeaders, maskSensitive bool) *Parser {
+func NewRequestParser(extractFunc ExtractFunc, injectFunc InjectFunc, opt RequestParserOpt) *Parser {
 	return &Parser{
-		includeAllHeaders: includeAllHeaders,
-		maskSensitive:     maskSensitive,
+		opt:         opt,
+		extractFunc: extractFunc,
+		injectFunc:  injectFunc,
 	}
 }
 
-// ParseMetadata extracts RequestInfo from gRPC metadata and ensures
+type ExtractFunc func(context.Context) (Metadata, bool)
+type InjectFunc func(context.Context, Metadata) context.Context
+
+// ParseMetadata extracts RequestInfo from metadata and ensures
 // that essential request identifiers are always present by generating
 // them ONLY when not provided by the client. If a request ID is generated,
-// it is added to the gRPC metadata for downstream propagation.
+// it is added to the metadata for downstream propagation.
 //
 // This function:
 // - Extracts request/correlation/trace IDs from metadata
 // - Generates a request ID ONLY if none is present in headers
-// - Adds generated request ID to gRPC metadata for propagation (only if generated)
+// - Adds generated request ID to metadata for propagation (only if generated)
 // - Extracts authentication information
 // - Optionally includes all headers based on configuration
 //
 // Parameters:
-//   - ctx: gRPC context containing metadata
+//   - ctx: context containing metadata
 //
 // Returns:
 //   - context.Context: Updated context with request ID in metadata (only if request ID was generated)
 //   - *RequestInfo: Populated request information with guaranteed request ID
 func (p *Parser) ParseMetadata(ctx context.Context) (context.Context, *RequestInfo) {
-	md, ok := metadata.FromIncomingContext(ctx)
+	md, ok := p.extractFunc(ctx)
 	if !ok {
 		// No metadata present, create new metadata with generated request ID
 		requestID := p.generateRequestID()
@@ -71,10 +80,10 @@ func (p *Parser) ParseMetadata(ctx context.Context) (context.Context, *RequestIn
 		}
 
 		// Create new metadata with the generated request ID
-		newMD := metadata.New(map[string]string{
+		newMD := NewMetadata(map[string]string{
 			HeaderXRequestID: requestID,
 		})
-		updatedCtx := metadata.NewIncomingContext(ctx, newMD)
+		updatedCtx := p.injectFunc(ctx, newMD)
 
 		return updatedCtx, info
 	}
@@ -88,7 +97,7 @@ func (p *Parser) ParseMetadata(ctx context.Context) (context.Context, *RequestIn
 	p.extractAuthentication(md, info)
 
 	// Include all headers if requested
-	if p.includeAllHeaders {
+	if p.opt.IncludeAllHeaders {
 		p.extractAllHeaders(md, info)
 	}
 
@@ -105,7 +114,7 @@ func (p *Parser) ParseMetadata(ctx context.Context) (context.Context, *RequestIn
 // Returns the updated context and a boolean indicating if a request ID was generated.
 func (p *Parser) extractRequestIDs(
 	ctx context.Context,
-	md metadata.MD,
+	md Metadata,
 	info *RequestInfo,
 ) (context.Context, bool) {
 	// Check common request ID headers
@@ -163,7 +172,7 @@ func (p *Parser) extractRequestIDs(
 // so it can be propagated to downstream services and accessed by other interceptors.
 func (p *Parser) addRequestIDToMetadata(
 	ctx context.Context,
-	existingMD metadata.MD,
+	existingMD Metadata,
 	requestID string,
 ) context.Context {
 	// Clone the existing metadata to avoid modifying the original
@@ -173,7 +182,7 @@ func (p *Parser) addRequestIDToMetadata(
 	newMD.Set(HeaderXRequestID, requestID)
 
 	// Create a new context with the updated metadata
-	return metadata.NewIncomingContext(ctx, newMD)
+	return p.injectFunc(ctx, newMD)
 }
 
 // generateRequestID creates a new unique request identifier.
@@ -186,13 +195,13 @@ func (p *Parser) generateRequestID() string {
 }
 
 // extractAuthentication extracts authentication information
-func (p *Parser) extractAuthentication(md metadata.MD, info *RequestInfo) {
+func (p *Parser) extractAuthentication(md Metadata, info *RequestInfo) {
 	// Authorization header
 	if authHeader := p.getFirstValue(md, HeaderAuthorization); authHeader != "" {
 		info.HasAuth = true
 		info.AuthType = p.extractAuthType(authHeader)
 
-		if !p.maskSensitive {
+		if !p.opt.MaskSensitive {
 			info.AuthToken = authHeader
 		} else {
 			info.AuthToken = p.maskToken(authHeader)
@@ -201,13 +210,13 @@ func (p *Parser) extractAuthentication(md metadata.MD, info *RequestInfo) {
 }
 
 // extractAllHeaders extracts all headers for debugging
-func (p *Parser) extractAllHeaders(md metadata.MD, info *RequestInfo) {
+func (p *Parser) extractAllHeaders(md Metadata, info *RequestInfo) {
 	info.AllHeaders = make(map[string]string)
 
 	for key, values := range md {
 		if len(values) > 0 {
 			// Mask sensitive headers
-			if p.maskSensitive && p.isSensitiveHeader(key) {
+			if p.opt.MaskSensitive && p.isSensitiveHeader(key) {
 				info.AllHeaders[key] = p.maskToken(values[0])
 			} else {
 				info.AllHeaders[key] = values[0]
@@ -217,7 +226,7 @@ func (p *Parser) extractAllHeaders(md metadata.MD, info *RequestInfo) {
 }
 
 // Helper functions
-func (p *Parser) getFirstValue(md metadata.MD, keys ...string) string {
+func (p *Parser) getFirstValue(md Metadata, keys ...string) string {
 	for _, key := range keys {
 		if values := md.Get(key); len(values) > 0 && values[0] != "" {
 			return values[0]

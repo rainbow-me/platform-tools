@@ -6,7 +6,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
-	internalmetadata "github.com/rainbow-me/platform-tools/common/metadata"
+	common "github.com/rainbow-me/platform-tools/common/metadata"
 )
 
 // Define a custom type for context keys to avoid collisions
@@ -19,11 +19,14 @@ const requestContextKey contextKey = "request_info"
 func RequestContextUnaryServerInterceptor() grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
-		req interface{},
+		req any,
 		_ *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
-	) (interface{}, error) {
-		parser := internalmetadata.NewRequestParser(true, true)
+	) (any, error) {
+		parser := common.NewRequestParser(metadataExtractor, metadataInjector, common.RequestParserOpt{
+			IncludeAllHeaders: true,
+			MaskSensitive:     true,
+		})
 		updatedCtx, requestInfo := parser.ParseMetadata(ctx)
 
 		// Add to context for handlers using custom context key type
@@ -37,22 +40,22 @@ func RequestContextUnaryServerInterceptor() grpc.UnaryServerInterceptor {
 }
 
 // GetRequestInfoFromContext extracts RequestInfo from context
-func GetRequestInfoFromContext(ctx context.Context) (*internalmetadata.RequestInfo, bool) {
+func GetRequestInfoFromContext(ctx context.Context) (*common.RequestInfo, bool) {
 	// Check if context is nil
 	if ctx == nil {
-		return &internalmetadata.RequestInfo{}, false
+		return &common.RequestInfo{}, false
 	}
 
 	// Get value from context
 	val := ctx.Value(requestContextKey)
 	if val == nil {
-		return &internalmetadata.RequestInfo{}, false
+		return &common.RequestInfo{}, false
 	}
 
 	// Type assert to RequestInfo
-	requestInfo, ok := val.(*internalmetadata.RequestInfo)
+	requestInfo, ok := val.(*common.RequestInfo)
 	if !ok || requestInfo == nil {
-		return &internalmetadata.RequestInfo{}, false
+		return &common.RequestInfo{}, false
 	}
 
 	return requestInfo, true
@@ -61,7 +64,7 @@ func GetRequestInfoFromContext(ctx context.Context) (*internalmetadata.RequestIn
 func UnaryRequestContextClientInterceptor(
 	ctx context.Context,
 	method string,
-	req, reply interface{},
+	req, reply any,
 	cc *grpc.ClientConn,
 	invoker grpc.UnaryInvoker,
 	opts ...grpc.CallOption,
@@ -69,14 +72,23 @@ func UnaryRequestContextClientInterceptor(
 	// Extract request ID from incoming metadata
 	requestID := "unknown"
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		if values := md.Get(internalmetadata.HeaderXRequestID); len(values) > 0 && values[0] != "" {
+		if values := md.Get(common.HeaderXRequestID); len(values) > 0 && values[0] != "" {
 			requestID = values[0]
 		}
 	}
 
 	// Add request ID to outgoing metadata
-	ctx = metadata.AppendToOutgoingContext(ctx, internalmetadata.HeaderXRequestID, requestID)
+	ctx = metadata.AppendToOutgoingContext(ctx, common.HeaderXRequestID, requestID)
 
 	// Continue with the actual gRPC call using the updated context
 	return invoker(ctx, method, req, reply, cc, opts...)
+}
+
+func metadataExtractor(ctx context.Context) (common.Metadata, bool) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	return common.Metadata(md), ok
+}
+
+func metadataInjector(ctx context.Context, md common.Metadata) context.Context {
+	return metadata.NewIncomingContext(ctx, metadata.MD(md))
 }
