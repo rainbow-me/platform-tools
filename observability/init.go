@@ -55,7 +55,7 @@ func InitObservability(serviceName, env string, log *logger.Logger, opts ...Opti
 	tracerOpts := []tracer.StartOption{
 		tracer.WithEnv(env),
 		tracer.WithService(serviceName),
-		tracer.WithLogger((*tracerLogger)(log)),
+		tracer.WithLogger((*logger.Adapter)(log)),
 		tracer.WithDebugStack(cfg.DebugStack),
 		tracer.WithAnalytics(cfg.AnalyticsEnabled),
 	}
@@ -72,13 +72,4 @@ func InitObservability(serviceName, env string, log *logger.Logger, opts ...Opti
 		log.Info("Stopping tracer")
 		tracer.Stop()
 	}
-}
-
-type tracerLogger logger.Logger
-
-func (log *tracerLogger) Log(msg string) {
-	if log == nil {
-		return
-	}
-	(*logger.Logger)(log).Info(msg)
 }
