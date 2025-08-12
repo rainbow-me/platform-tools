@@ -27,6 +27,17 @@ type RequestInfo struct {
 	AllHeaders map[string]string `json:"allHeaders,omitempty"`
 }
 
+type requestInfoKey struct{}
+
+func ContextWithRequestInfo(ctx context.Context, info RequestInfo) context.Context {
+	return context.WithValue(ctx, requestInfoKey{}, info)
+}
+
+func RequestInfoFromContext(ctx context.Context) (RequestInfo, bool) {
+	md, ok := ctx.Value(requestInfoKey{}).(RequestInfo)
+	return md, ok
+}
+
 // Parser extracts RequestInfo from gRPC metadata
 type Parser struct {
 	opt         RequestParserOpt

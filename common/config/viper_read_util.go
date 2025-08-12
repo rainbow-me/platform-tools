@@ -100,8 +100,8 @@ func LoadConfig(conf interface{}, logger *logger.Logger, options ...ReadConfigOp
 	}
 
 	// Get the current environment (like 'development', 'production')
-	currentEnv := os.Getenv(env.ApplicationEnvKey)
-	if err = env.IsEnvironmentValid(currentEnv); err != nil {
+	currentEnv, err := env.GetApplicationEnv()
+	if err != nil {
 		return fmt.Errorf("invalid environment: %w", err)
 	}
 

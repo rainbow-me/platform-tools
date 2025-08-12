@@ -1,6 +1,8 @@
 package logger
 
 import (
+	"fmt"
+	"runtime/debug"
 	"strconv"
 	"strings"
 
@@ -75,4 +77,30 @@ func WithTrace(ctx *tracer.SpanContext) []Field {
 		String(traceIDKey, ctx.TraceID()),
 		String(spanIDKey, strconv.FormatUint(ctx.SpanID(), 10)),
 	}
+}
+
+func WithPanic(p any) []Field {
+	msg := extractPanicMessage(p)
+	panicType := extractPanicType(msg)
+	return []Field{
+		String(PanicValueKey, msg),
+		String(PanicTypeKey, panicType),
+		ByteString(StacktraceKey, debug.Stack()),
+	}
+}
+
+// extractPanicMessage safely extracts a string representation of the panic value
+func extractPanicMessage(panicValue any) string {
+	if panicValue == nil {
+		return "unknown panic (nil value)"
+	}
+	return fmt.Sprintf("%v", panicValue)
+}
+
+// extractPanicType safely extracts the type information of the panic value
+func extractPanicType(panicValue any) string {
+	if panicValue == nil {
+		return "nil"
+	}
+	return fmt.Sprintf("%T", panicValue)
 }

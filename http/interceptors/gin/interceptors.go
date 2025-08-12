@@ -52,6 +52,7 @@ func DefaultInterceptors(opts ...InterceptorOpt) []gin.HandlerFunc {
 		opt(cfg)
 	}
 	middlewares := []gin.HandlerFunc{
+		PanicRecoveryMiddleware,
 		ErrorHandlingMiddleware,
 	}
 	if cfg.TracingEnabled {

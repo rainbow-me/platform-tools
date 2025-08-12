@@ -2,7 +2,6 @@ package logger
 
 import (
 	"fmt"
-	"os"
 	"sync"
 
 	"github.com/cockroachdb/errors"
@@ -15,8 +14,11 @@ import (
 const (
 	MessageKey    = "message"
 	StacktraceKey = "stacktrace"
-	traceIDKey    = "dd.trace_id"
-	spanIDKey     = "dd.span_id"
+	PanicValueKey = "panic_value"
+	PanicTypeKey  = "panic_type"
+
+	traceIDKey = "dd.trace_id"
+	spanIDKey  = "dd.span_id"
 )
 
 var (
@@ -122,10 +124,8 @@ func (l *Logger) WithOptions(option ...zap.Option) *Logger {
 // Note that in case of failure to instantiate a Logger, this will panic.
 func Init() error {
 	once.Do(func() {
-		currentEnv, err := env.FromString(os.Getenv(env.ApplicationEnvKey))
-		if err != nil {
-			currentEnv = env.EnvironmentDevelopment
-		}
+		var err error
+		currentEnv := env.GetApplicationEnvOrDefault(env.EnvironmentDevelopment)
 		zLog, err = newZapLogger(currentEnv)
 		if err != nil {
 			errLog = errors.Wrap(err, "failed to initialize logger")

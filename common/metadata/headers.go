@@ -5,6 +5,9 @@ const (
 	// HeaderXRequestID is used to uniquely identify individual HTTP requests
 	// for logging, debugging, and tracking purposes across the application
 	HeaderXRequestID = "x-request-id"
+
+	// HeaderXRequestInfo contains the metadata.RequestInfo as json
+	HeaderXRequestInfo = "x-request-info"
 )
 
 // Correlation and Trace ID Headers
