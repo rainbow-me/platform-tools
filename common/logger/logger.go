@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/cockroachdb/errors"
+	"github.com/samber/lo"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
@@ -118,10 +119,9 @@ func (l *Logger) With(fields ...Field) *Logger {
 type Option zap.Option
 
 func (l *Logger) WithOptions(option ...Option) *Logger {
-	zapOpt := make([]zap.Option, len(option))
-	for i, o := range option {
-		zapOpt[i] = o.(Option)
-	}
+	zapOpt := lo.Map(option, func(item Option, _ int) zap.Option {
+		return item
+	})
 	return &Logger{zap: l.zap.WithOptions(zapOpt...)}
 }
 

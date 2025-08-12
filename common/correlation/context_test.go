@@ -10,9 +10,9 @@ import (
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"google.golang.org/grpc/metadata"
 
+	corr "github.com/rainbow-me/platform-tools/common/correlation"
 	"github.com/rainbow-me/platform-tools/common/logger"
-	meta "github.com/rainbow-me/platform-tools/common/metadata"
-	corr "github.com/rainbow-me/platform-tools/grpc/correlation"
+	meta "github.com/rainbow-me/platform-tools/grpc/metadata"
 )
 
 func TestSet(t *testing.T) {

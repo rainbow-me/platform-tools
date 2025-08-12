@@ -7,6 +7,7 @@ import (
 	"google.golang.org/grpc/metadata"
 
 	common "github.com/rainbow-me/platform-tools/common/metadata"
+	internalmetadata "github.com/rainbow-me/platform-tools/grpc/metadata"
 )
 
 // Define a custom type for context keys to avoid collisions
@@ -23,7 +24,7 @@ func RequestContextUnaryServerInterceptor() grpc.UnaryServerInterceptor {
 		_ *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (any, error) {
-		parser := common.NewRequestParser(metadataExtractor, metadataInjector, common.RequestParserOpt{
+		parser := internalmetadata.NewRequestParser(internalmetadata.RequestParserOpt{
 			IncludeAllHeaders: true,
 			MaskSensitive:     true,
 		})
@@ -40,22 +41,22 @@ func RequestContextUnaryServerInterceptor() grpc.UnaryServerInterceptor {
 }
 
 // GetRequestInfoFromContext extracts RequestInfo from context
-func GetRequestInfoFromContext(ctx context.Context) (*common.RequestInfo, bool) {
+func GetRequestInfoFromContext(ctx context.Context) (*internalmetadata.RequestInfo, bool) {
 	// Check if context is nil
 	if ctx == nil {
-		return &common.RequestInfo{}, false
+		return &internalmetadata.RequestInfo{}, false
 	}
 
 	// Get value from context
 	val := ctx.Value(requestContextKey)
 	if val == nil {
-		return &common.RequestInfo{}, false
+		return &internalmetadata.RequestInfo{}, false
 	}
 
 	// Type assert to RequestInfo
-	requestInfo, ok := val.(*common.RequestInfo)
+	requestInfo, ok := val.(*internalmetadata.RequestInfo)
 	if !ok || requestInfo == nil {
-		return &common.RequestInfo{}, false
+		return &internalmetadata.RequestInfo{}, false
 	}
 
 	return requestInfo, true
@@ -82,13 +83,4 @@ func UnaryRequestContextClientInterceptor(
 
 	// Continue with the actual gRPC call using the updated context
 	return invoker(ctx, method, req, reply, cc, opts...)
-}
-
-func metadataExtractor(ctx context.Context) (common.Metadata, bool) {
-	md, ok := metadata.FromIncomingContext(ctx)
-	return common.Metadata(md), ok
-}
-
-func metadataInjector(ctx context.Context, md common.Metadata) context.Context {
-	return metadata.NewIncomingContext(ctx, metadata.MD(md))
 }

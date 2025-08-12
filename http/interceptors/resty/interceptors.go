@@ -8,9 +8,9 @@ import (
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"github.com/go-resty/resty/v2"
 
+	"github.com/rainbow-me/platform-tools/common/correlation"
+	"github.com/rainbow-me/platform-tools/common/headers"
 	"github.com/rainbow-me/platform-tools/common/logger"
-	"github.com/rainbow-me/platform-tools/common/metadata"
-	"github.com/rainbow-me/platform-tools/grpc/correlation"
 )
 
 const (
@@ -81,7 +81,7 @@ func TracingMiddleware() (resty.RequestMiddleware, resty.ResponseMiddleware) {
 		req.SetContext(ctx)
 
 		// propagate trace through Rainbow custom tracing header
-		req.SetHeader(metadata.HeaderXTraceID, span.Context().TraceID())
+		req.SetHeader(headers.HeaderXTraceID, span.Context().TraceID())
 
 		// also propagate through DataDog's standard headers
 		if err := tracer.Inject(span.Context(), tracer.HTTPHeadersCarrier(req.Header)); err != nil {
@@ -113,8 +113,8 @@ func TracingMiddleware() (resty.RequestMiddleware, resty.ResponseMiddleware) {
 
 func CorrelationMiddleware() resty.RequestMiddleware {
 	return func(_ *resty.Client, req *resty.Request) error {
-		headerVal := correlation.Generate(req.Context())
-		req.SetHeader(correlation.ContextCorrelationHeader, headerVal)
+		req.SetHeader(correlation.ContextCorrelationHeader, correlation.Generate(req.Context()))
+		req.SetHeader(correlation.RequestIDHeader, correlation.RequestIDFromContext(req.Context()))
 		return nil
 	}
 }

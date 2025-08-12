@@ -16,9 +16,9 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
+	"github.com/rainbow-me/platform-tools/common/correlation"
+	"github.com/rainbow-me/platform-tools/common/headers"
 	"github.com/rainbow-me/platform-tools/common/logger"
-	internalmetadata "github.com/rainbow-me/platform-tools/common/metadata"
-	"github.com/rainbow-me/platform-tools/grpc/correlation"
 	"github.com/rainbow-me/platform-tools/grpc/errors"
 )
 
@@ -42,7 +42,7 @@ const (
 	responseKey = "response"
 
 	// Client identification header
-	clientTaggingHeader = internalmetadata.HeaderClientTaggingHeader
+	clientTaggingHeader = headers.HeaderClientTaggingHeader
 )
 
 // Pre-compile regex for performance - avoid recompiling on each request
@@ -135,7 +135,7 @@ func buildBaseLogFields(ctx context.Context, grpcService, grpcMethod string) []l
 		return fields
 	}
 
-	requestID := md.Get(internalmetadata.HeaderXRequestID)
+	requestID := md.Get(headers.HeaderXRequestID)
 	if len(requestID) > 0 {
 		fields = append(fields, logger.String(requestIDKey, requestID[0]))
 	} else {

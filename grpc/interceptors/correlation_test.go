@@ -14,7 +14,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
 
-	"github.com/rainbow-me/platform-tools/grpc/correlation"
+	"github.com/rainbow-me/platform-tools/common/correlation"
 	"github.com/rainbow-me/platform-tools/grpc/interceptors"
 	pb "github.com/rainbow-me/platform-tools/grpc/protos/gen/go/test"
 )

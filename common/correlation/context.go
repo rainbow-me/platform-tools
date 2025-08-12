@@ -8,22 +8,27 @@ import (
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"github.com/google/uuid"
 
+	"github.com/rainbow-me/platform-tools/common/headers"
 	"github.com/rainbow-me/platform-tools/common/logger"
-	internalmetadata "github.com/rainbow-me/platform-tools/common/metadata"
 )
 
 // Standard correlation keys
 const (
 	TenancyKey       = "tenancy"
 	IDKey            = "correlation_id"
+	RequestIDKey     = "request_id"
 	IdempotencyKeyID = "idempotency_key"
 )
 
 // ContextCorrelationHeader HTTP/gRPC header name for correlation context
-const ContextCorrelationHeader = internalmetadata.HeaderXCorrelationID
+const ContextCorrelationHeader = headers.HeaderXCorrelationID
+const RequestIDHeader = headers.HeaderXRequestID
 
 // correlationContextKey is a private type for context keys to avoid collisions
 type correlationContextKey struct{}
+
+// requestIDContextKey is a private type for contex keys to avoid collision
+type requestIDContextKey struct{}
 
 // Key CorrelationKey is the context key for storing correlation data
 var Key = correlationContextKey{}
@@ -31,8 +36,7 @@ var Key = correlationContextKey{}
 // Data CorrelationData represents the correlation context data
 type Data map[string]string
 
-func ContextWithCorrelation(ctx context.Context, supplier func() string) context.Context {
-	val := supplier()
+func ContextWithCorrelation(ctx context.Context, val string) context.Context {
 	if val != "" {
 		ctx = Set(ctx, ParseCorrelationHeader(val))
 	}
@@ -41,6 +45,21 @@ func ContextWithCorrelation(ctx context.Context, supplier func() string) context
 		ctx = SetID(ctx, uuid.NewString())
 	}
 	return ctx
+}
+
+func ContextWithRequestID(ctx context.Context, val string) context.Context {
+	if val == "" {
+		val = uuid.NewString()
+	}
+	return context.WithValue(ctx, requestIDContextKey{}, val)
+}
+
+func RequestIDFromContext(ctx context.Context) string {
+	val := ctx.Value(requestIDContextKey{})
+	if val == nil {
+		return ""
+	}
+	return val.(string)
 }
 
 // Set adds correlation values to a context, returning a new context.
@@ -193,6 +212,10 @@ func ToZapFields(ctx context.Context) []logger.Field {
 		if value != "" {
 			fields = append(fields, logger.String(key, value))
 		}
+	}
+	requestID := RequestIDFromContext(ctx)
+	if requestID != "" {
+		fields = append(fields, logger.String(RequestIDKey, requestID))
 	}
 
 	return fields
