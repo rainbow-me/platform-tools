@@ -2,11 +2,12 @@ package correlation
 
 import (
 	"context"
+	"encoding/json"
 	"maps"
-	"strings"
 
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 
 	"github.com/rainbow-me/platform-tools/common/headers"
 	"github.com/rainbow-me/platform-tools/common/logger"
@@ -38,7 +39,12 @@ type Data map[string]string
 
 func ContextWithCorrelation(ctx context.Context, val string) context.Context {
 	if val != "" {
-		ctx = Set(ctx, ParseCorrelationHeader(val))
+		correlationData, err := ParseCorrelationHeader(val)
+		if err != nil {
+			logger.FromContext(ctx).Warn("failed to parse correlation header", zap.Error(err))
+		} else {
+			ctx = Set(ctx, correlationData)
+		}
 	}
 	// Generate correlation_id if missing
 	if !Has(ctx, IDKey) {
@@ -287,14 +293,10 @@ func IsEmpty(ctx context.Context) bool {
 func String(ctx context.Context) string {
 	data := Get(ctx)
 	if len(data) == 0 {
-		return ""
+		return "{}"
 	}
-
-	pairs := make([]string, 0, len(data))
-	for k, v := range data {
-		pairs = append(pairs, k+"="+v)
-	}
-	return strings.Join(pairs, ",")
+	j, _ := json.Marshal(data)
+	return string(j)
 }
 
 // Generate creates the correlation header string from the context.
@@ -303,19 +305,8 @@ func Generate(ctx context.Context) string {
 }
 
 // ParseCorrelationHeader parses the correlation header string into a Data map.
-func ParseCorrelationHeader(headerVal string) Data {
-	// TODO shouldn't we rather serialize as json?
-	pairs := strings.Split(headerVal, ",")
-	m := make(Data)
-	for _, pair := range pairs {
-		parts := strings.SplitN(pair, "=", 2)
-		if len(parts) == 2 {
-			k := strings.TrimSpace(parts[0])
-			v := strings.TrimSpace(parts[1])
-			if k != "" && v != "" {
-				m[k] = v
-			}
-		}
-	}
-	return m
+func ParseCorrelationHeader(headerVal string) (Data, error) {
+	var data Data
+	err := json.Unmarshal([]byte(headerVal), &data)
+	return data, err
 }

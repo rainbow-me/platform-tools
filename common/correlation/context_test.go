@@ -806,7 +806,11 @@ func TestParseCorrelationHeader(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := corr.ParseCorrelationHeader(tt.headerVal); !reflect.DeepEqual(got, tt.want) {
+			got, err := corr.ParseCorrelationHeader(tt.headerVal)
+			if err != nil {
+				t.Errorf("ParseCorrelationHeader() error = %v", err)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ParseCorrelationHeader() = %v, want %v", got, tt.want)
 			}
 		})
