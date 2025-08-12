@@ -61,11 +61,10 @@ func ContextWithRequestID(ctx context.Context, val string) context.Context {
 }
 
 func RequestIDFromContext(ctx context.Context) string {
-	val := ctx.Value(requestIDContextKey{})
-	if val == nil {
-		return ""
+	if val, ok := ctx.Value(requestIDContextKey{}).(string); ok {
+		return val
 	}
-	return val.(string)
+	return ""
 }
 
 // Set adds correlation values to a context, returning a new context.

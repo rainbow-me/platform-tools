@@ -2,6 +2,7 @@ package correlation_test
 
 import (
 	"context"
+	"maps"
 	"reflect"
 	"sort"
 	"strings"
@@ -705,17 +706,17 @@ func TestString(t *testing.T) {
 		{
 			name: "empty",
 			ctx:  context.Background(),
-			want: "",
+			want: "{}",
 		},
 		{
 			name: "single",
 			ctx:  corr.Set(context.Background(), map[string]string{"key1": "val1"}),
-			want: "key1=val1",
+			want: `{"key1":"val1"}`,
 		},
 		{
 			name: "multiple",
 			ctx:  corr.Set(context.Background(), map[string]string{"key1": "val1", "key2": "val2"}),
-			want: "key1=val1,key2=val2", // Order may vary, but we can sort for comparison
+			want: `{"key1":"val1","key2":"val2"}`, // Order may vary, but we can sort for comparison
 		},
 	}
 
@@ -748,12 +749,12 @@ func TestGenerate(t *testing.T) {
 		{
 			name: "empty",
 			ctx:  context.Background(),
-			want: "",
+			want: "{}",
 		},
 		{
 			name: "single",
 			ctx:  corr.Set(context.Background(), map[string]string{"key1": "val1"}),
-			want: "key1=val1",
+			want: `{"key1":"val1"}`,
 		},
 	}
 
@@ -771,46 +772,37 @@ func TestParseCorrelationHeader(t *testing.T) {
 		name      string
 		headerVal string
 		want      corr.Data
+		wantErr   bool
 	}{
 		{
 			name:      "empty",
-			headerVal: "",
+			headerVal: "{}",
 			want:      corr.Data{},
 		},
 		{
 			name:      "single",
-			headerVal: "key1=val1",
+			headerVal: `{"key1":"val1"}`,
 			want:      corr.Data{"key1": "val1"},
 		},
 		{
 			name:      "multiple",
-			headerVal: "key1=val1,key2=val2",
+			headerVal: `{"key1":"val1","key2":"val2"}`,
 			want:      corr.Data{"key1": "val1", "key2": "val2"},
 		},
 		{
-			name:      "with spaces",
-			headerVal: " key1 = val1 , key2 = val2 ",
-			want:      corr.Data{"key1": "val1", "key2": "val2"},
-		},
-		{
-			name:      "invalid parts",
+			name:      "invalid json",
 			headerVal: "key1,=val1,key2=val2=extra",
-			want:      corr.Data{"key2": "val2=extra"},
-		},
-		{
-			name:      "empty pairs",
-			headerVal: ",,key= , =val,",
-			want:      corr.Data{},
+			wantErr:   true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := corr.ParseCorrelationHeader(tt.headerVal)
-			if err != nil {
+			if err != nil && !tt.wantErr {
 				t.Errorf("ParseCorrelationHeader() error = %v", err)
 			}
-			if !reflect.DeepEqual(got, tt.want) {
+			if !maps.Equal(got, tt.want) {
 				t.Errorf("ParseCorrelationHeader() = %v, want %v", got, tt.want)
 			}
 		})
