@@ -6,7 +6,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
-	common "github.com/rainbow-me/platform-tools/common/metadata"
+	"github.com/rainbow-me/platform-tools/common/headers"
 	internalmetadata "github.com/rainbow-me/platform-tools/grpc/metadata"
 )
 
@@ -73,13 +73,13 @@ func UnaryRequestContextClientInterceptor(
 	// Extract request ID from incoming metadata
 	requestID := "unknown"
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		if values := md.Get(common.HeaderXRequestID); len(values) > 0 && values[0] != "" {
+		if values := md.Get(headers.HeaderXRequestID); len(values) > 0 && values[0] != "" {
 			requestID = values[0]
 		}
 	}
 
 	// Add request ID to outgoing metadata
-	ctx = metadata.AppendToOutgoingContext(ctx, common.HeaderXRequestID, requestID)
+	ctx = metadata.AppendToOutgoingContext(ctx, headers.HeaderXRequestID, requestID)
 
 	// Continue with the actual gRPC call using the updated context
 	return invoker(ctx, method, req, reply, cc, opts...)
