@@ -7,6 +7,7 @@ import (
 
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"github.com/google/uuid"
+	"google.golang.org/grpc/metadata"
 )
 
 // RequestInfo contains extracted information from gRPC metadata
@@ -282,4 +283,13 @@ func (p *Parser) isSensitiveHeader(key string) bool {
 		}
 	}
 	return false
+}
+
+// GetFirst returns the first value for a metadata key, or an empty string if not present.
+func GetFirst(md metadata.MD, key string) string {
+	val := md.Get(key)
+	if len(val) > 0 {
+		return val[0]
+	}
+	return ""
 }

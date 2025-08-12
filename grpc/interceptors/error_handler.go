@@ -2,11 +2,15 @@ package interceptors
 
 import (
 	"context"
+	"fmt"
+	"os"
 
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/ext"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
+
+	"github.com/rainbow-me/platform-tools/common/env"
 )
 
 // UnaryErrorServerInterceptor is a gRPC unary server interceptor that handles errors returned by handlers.
@@ -39,6 +43,10 @@ func GrpcErrorStreamingInterceptor(
 func handleError(ctx context.Context, err error) error {
 	if err == nil {
 		return nil
+	}
+	if env.IsLocalApplicationEnv() {
+		// pretty print the error to the local console to make it human-readable in case it has a stack trace
+		_, _ = fmt.Fprintf(os.Stderr, "Error in grpc handler: %+v\n", err)
 	}
 
 	// Always tag the error in the tracing span for any error

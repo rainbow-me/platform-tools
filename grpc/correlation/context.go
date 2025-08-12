@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
-	"go.uber.org/zap"
-	"google.golang.org/grpc/metadata"
+	"github.com/google/uuid"
 
+	"github.com/rainbow-me/platform-tools/common/logger"
 	internalmetadata "github.com/rainbow-me/platform-tools/common/metadata"
 )
 
@@ -30,6 +30,18 @@ var Key = correlationContextKey{}
 
 // Data CorrelationData represents the correlation context data
 type Data map[string]string
+
+func ContextWithCorrelation(ctx context.Context, supplier func() string) context.Context {
+	val := supplier()
+	if val != "" {
+		ctx = Set(ctx, ParseCorrelationHeader(val))
+	}
+	// Generate correlation_id if missing
+	if !Has(ctx, IDKey) {
+		ctx = SetID(ctx, uuid.NewString())
+	}
+	return ctx
+}
 
 // Set adds correlation values to a context, returning a new context.
 // - Derives new context; doesn't modify input context or values map.
@@ -170,16 +182,16 @@ func Merge(ctx context.Context, otherContexts ...context.Context) context.Contex
 }
 
 // ToZapFields converts the correlation context to zap fields for logging.
-func ToZapFields(ctx context.Context) []zap.Field {
+func ToZapFields(ctx context.Context) []logger.Field {
 	data := Get(ctx)
 	if len(data) == 0 {
 		return nil
 	}
 
-	fields := make([]zap.Field, 0, len(data))
+	fields := make([]logger.Field, 0, len(data))
 	for key, value := range data {
 		if value != "" {
-			fields = append(fields, zap.String(key, value))
+			fields = append(fields, logger.String(key, value))
 		}
 	}
 
@@ -269,6 +281,7 @@ func Generate(ctx context.Context) string {
 
 // ParseCorrelationHeader parses the correlation header string into a Data map.
 func ParseCorrelationHeader(headerVal string) Data {
+	// TODO shouldn't we rather serialize as json?
 	pairs := strings.Split(headerVal, ",")
 	m := make(Data)
 	for _, pair := range pairs {
@@ -282,13 +295,4 @@ func ParseCorrelationHeader(headerVal string) Data {
 		}
 	}
 	return m
-}
-
-// GetFirst returns the first value for a metadata key, or an empty string if not present.
-func GetFirst(md metadata.MD, key string) string {
-	val := md.Get(key)
-	if len(val) > 0 {
-		return val[0]
-	}
-	return ""
 }

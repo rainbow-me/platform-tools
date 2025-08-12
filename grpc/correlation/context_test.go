@@ -8,9 +8,10 @@ import (
 	"testing"
 
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
-	"go.uber.org/zap"
 	"google.golang.org/grpc/metadata"
 
+	"github.com/rainbow-me/platform-tools/common/logger"
+	meta "github.com/rainbow-me/platform-tools/common/metadata"
 	corr "github.com/rainbow-me/platform-tools/grpc/correlation"
 )
 
@@ -379,7 +380,7 @@ func TestToZapFields(t *testing.T) {
 	tests := []struct {
 		name string
 		ctx  context.Context
-		want []zap.Field
+		want []logger.Field
 	}{
 		{
 			name: "empty data",
@@ -389,12 +390,12 @@ func TestToZapFields(t *testing.T) {
 		{
 			name: "with data skip empty",
 			ctx:  corr.Set(context.Background(), map[string]string{"key1": "val1", "key2": ""}),
-			want: []zap.Field{zap.String("key1", "val1")},
+			want: []logger.Field{logger.String("key1", "val1")},
 		},
 		{
 			name: "multiple fields",
 			ctx:  corr.Set(context.Background(), map[string]string{"key1": "val1", "key2": "val2"}),
-			want: []zap.Field{zap.String("key1", "val1"), zap.String("key2", "val2")},
+			want: []logger.Field{logger.String("key1", "val1"), logger.String("key2", "val2")},
 		},
 	}
 
@@ -408,12 +409,12 @@ func TestToZapFields(t *testing.T) {
 	}
 }
 
-// Helper to compare zap.Fields (order insensitive)
-func zapFieldsEqual(a, b []zap.Field) bool {
+// Helper to compare logger.Fields (order insensitive)
+func zapFieldsEqual(a, b []logger.Field) bool {
 	if len(a) != len(b) {
 		return false
 	}
-	am := make(map[string]zap.Field)
+	am := make(map[string]logger.Field)
 	for _, f := range a {
 		am[f.Key] = f
 	}
@@ -847,7 +848,7 @@ func TestGetFirst(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := corr.GetFirst(tt.md, tt.key); got != tt.want {
+			if got := meta.GetFirst(tt.md, tt.key); got != tt.want {
 				t.Errorf("GetFirst() = %v, want %v", got, tt.want)
 			}
 		})

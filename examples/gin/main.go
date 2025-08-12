@@ -42,7 +42,7 @@ func run() error {
 
 	r.GET("/error", func(c *gin.Context) {
 		// this error will be logged by our middleware as 'some-error' and returned as an 'internal server error' in the response
-		_ = c.Error(errors.New("some-error")) // this should also include a stack trace
+		_ = c.Error(errors.New("some-error"))
 		return
 	})
 

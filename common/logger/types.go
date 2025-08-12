@@ -28,6 +28,7 @@ var (
 	Int32      = zap.Int32
 	Int16      = zap.Int16
 	Int8       = zap.Int8
+	Object     = zap.Object
 	String     = zap.String
 	Uint       = zap.Uint
 	Uint64     = zap.Uint64
@@ -40,6 +41,10 @@ var (
 )
 
 type Level zapcore.Level
+
+func (l Level) Enabled(lvl zapcore.Level) bool {
+	return Level(lvl) >= l
+}
 
 const (
 	DebugLevel  = Level(zapcore.DebugLevel)
@@ -71,6 +76,8 @@ func LevelFromString(s string) Level {
 		return InfoLevel // default to info
 	}
 }
+
+var AddStackTrace = zap.AddStacktrace
 
 func WithTrace(ctx *tracer.SpanContext) []Field {
 	return []Field{

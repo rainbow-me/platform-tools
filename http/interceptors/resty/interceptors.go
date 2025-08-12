@@ -10,7 +10,7 @@ import (
 
 	"github.com/rainbow-me/platform-tools/common/logger"
 	"github.com/rainbow-me/platform-tools/common/metadata"
-	"github.com/rainbow-me/platform-tools/http/interceptors"
+	"github.com/rainbow-me/platform-tools/grpc/correlation"
 )
 
 const (
@@ -113,12 +113,8 @@ func TracingMiddleware() (resty.RequestMiddleware, resty.ResponseMiddleware) {
 
 func CorrelationMiddleware() resty.RequestMiddleware {
 	return func(_ *resty.Client, req *resty.Request) error {
-		info, found := metadata.RequestInfoFromContext(req.Context())
-		if found {
-			if err := interceptors.InjectRequestInfo(req.Header, info); err != nil {
-				logger.FromContext(req.Context()).Warn("failed to inject request info", logger.Error(err))
-			}
-		}
+		headerVal := correlation.Generate(req.Context())
+		req.SetHeader(correlation.ContextCorrelationHeader, headerVal)
 		return nil
 	}
 }

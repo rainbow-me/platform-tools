@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/spf13/viper"
-	"go.uber.org/zap"
 
 	"github.com/rainbow-me/platform-tools/common/env"
 	"github.com/rainbow-me/platform-tools/common/logger"
@@ -54,7 +53,7 @@ func WithDynamicDir(dynamicDir string) ReadConfigOption {
 
 // LoadConfig loads the YAML configuration file based on the environment and provided options.
 // It reads from relative or absolute paths and uses Viper to parse the config file.
-func LoadConfig(conf interface{}, logger *logger.Logger, options ...ReadConfigOption) error { //nolint:cyclop
+func LoadConfig(conf any, log *logger.Logger, options ...ReadConfigOption) error { //nolint:cyclop
 	var pathToConfigDir string
 
 	// Default path setup
@@ -68,16 +67,16 @@ func LoadConfig(conf interface{}, logger *logger.Logger, options ...ReadConfigOp
 	// Get the current working directory
 	currentDir, err := os.Getwd()
 	if err != nil {
-		logger.Error("Error getting current working directory", zap.Error(err))
+		log.Error("Error getting current working directory", logger.Error(err))
 
 		return fmt.Errorf("failed to get current working directory: %w", err)
 	}
 
-	logger.Info("Current working directory", zap.String("directory", currentDir))
+	log.Info("Current working directory", logger.String("directory", currentDir))
 
 	// Adjust config path if running from binary target or Docker container
 	if strings.Contains(currentDir, binaryDir) || strings.Contains(currentDir, binaryInDocker) {
-		logger.Info("Binary directory", zap.String("directory", binaryDir))
+		log.Info("Binary directory", logger.String("directory", binaryDir))
 		config.RelativePath = binaryPath
 	}
 
@@ -87,15 +86,15 @@ func LoadConfig(conf interface{}, logger *logger.Logger, options ...ReadConfigOp
 		if config.AbsolutePath != "" {
 			config.AbsolutePath = fmt.Sprintf("%s/%s", config.AbsolutePath, config.DynamicDir)
 		}
-		logger.Info("Updated relative path", zap.String("path", config.RelativePath))
+		log.Info("Updated relative path", logger.String("path", config.RelativePath))
 	}
 
 	// Determine whether to use the relative or absolute path for the config file
 	if config.AbsolutePath != "" {
-		logger.Info("Using absolute path", zap.String("path", config.AbsolutePath))
+		log.Info("Using absolute path", logger.String("path", config.AbsolutePath))
 		pathToConfigDir = config.AbsolutePath
 	} else {
-		logger.Info("Using relative path", zap.String("path", config.RelativePath))
+		log.Info("Using relative path", logger.String("path", config.RelativePath))
 		pathToConfigDir = config.RelativePath
 	}
 
@@ -107,7 +106,7 @@ func LoadConfig(conf interface{}, logger *logger.Logger, options ...ReadConfigOp
 
 	// Construct the file path using the environment and the dynamic directory
 	filePath := fmt.Sprintf("%s/%s%s", pathToConfigDir, currentEnv, fileFormat)
-	logger.Info("Reading config file from path", zap.String("path", filePath))
+	log.Info("Reading config file from path", logger.String("path", filePath))
 
 	// Set up Viper to read the config file
 	viper.SetConfigFile(filePath)
@@ -124,7 +123,7 @@ func LoadConfig(conf interface{}, logger *logger.Logger, options ...ReadConfigOp
 	// Replace any environment variable placeholders (e.g., "${ENV_VAR}") with actual values
 	for _, key := range viper.AllKeys() {
 		value := viper.Get(key)
-		setEnvVariableFromString(key, value, logger)
+		setEnvVariableFromString(key, value, log)
 	}
 
 	// Unmarshal the config values into the provided struct
@@ -136,7 +135,7 @@ func LoadConfig(conf interface{}, logger *logger.Logger, options ...ReadConfigOp
 	return nil
 }
 
-func setEnvVariableFromString(key string, value interface{}, logger *logger.Logger) {
+func setEnvVariableFromString(key string, value any, log *logger.Logger) {
 	if str, ok := value.(string); ok && strings.HasPrefix(str, envVarPrefix) {
 		// Extract the environment variable name (everything after "env://")
 		envVar := str[len(envVarPrefix):] // Dynamically extract ENV variable name
@@ -145,10 +144,10 @@ func setEnvVariableFromString(key string, value interface{}, logger *logger.Logg
 		envValue, exists := os.LookupEnv(envVar)
 		if exists {
 			viper.Set(key, envValue)
-			logger.Info("set environment variable", zap.String("variableName", envVar))
+			log.Info("set environment variable", logger.String("variableName", envVar))
 		} else {
 			viper.Set(key, "") // Set to empty string if env var is missing
-			logger.Warn("environment variable not found", zap.String("variableName", envVar))
+			log.Warn("environment variable not found", logger.String("variableName", envVar))
 		}
 	}
 }

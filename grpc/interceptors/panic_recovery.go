@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"runtime/debug"
 
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/ext"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
@@ -13,6 +14,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/rainbow-me/platform-tools/common/env"
 	"github.com/rainbow-me/platform-tools/common/logger"
 )
 
@@ -89,5 +91,9 @@ func logPanicWithFallback(panicValue any, log *logger.Logger) {
 		// Fallback to standard error using slog
 		slog.New(slog.NewTextHandler(os.Stderr, nil)).
 			Error("Recovered from panic", logger.PanicValueKey, fmt.Sprintf("%+v", panicValue))
+	}
+	if env.IsLocalApplicationEnv() {
+		// pretty print the stack trace to the local console to make it human-readable
+		_, _ = fmt.Fprintf(os.Stderr, "%s\n", debug.Stack())
 	}
 }

@@ -31,7 +31,7 @@ func ErrorHandlingMiddleware(c *gin.Context) {
 		// pretty print the error to the local console to make it human-readable in case it has a stack trace
 		_, _ = fmt.Fprintf(os.Stderr, "Error in gin http handler: %+v\n", err)
 	}
-	tagSpanAsError(c, "internal", err.Error())
+	tagSpanAsError(c.Request.Context(), "internal", err.Error())
 	c.JSON(500, gin.H{
 		"message": "internal server error",
 	})
@@ -48,7 +48,7 @@ func PanicRecoveryMiddleware(c *gin.Context) {
 				// pretty print the stack trace to the local console to make it human-readable
 				_, _ = fmt.Fprintf(os.Stderr, "%s\n", debug.Stack())
 			}
-			tagSpanAsError(c, "panic", fmt.Sprintf("%v", r))
+			tagSpanAsError(c.Request.Context(), "panic", fmt.Sprintf("%v", r))
 			c.JSON(500, gin.H{
 				"message": "internal server error",
 			})

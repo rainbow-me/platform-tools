@@ -115,8 +115,14 @@ func (l *Logger) With(fields ...Field) *Logger {
 	return &Logger{zap: l.zap.With(fields...)}
 }
 
-func (l *Logger) WithOptions(option ...zap.Option) *Logger {
-	return &Logger{zap: l.zap.WithOptions(option...)}
+type Option zap.Option
+
+func (l *Logger) WithOptions(option ...Option) *Logger {
+	zapOpt := make([]zap.Option, len(option))
+	for i, o := range option {
+		zapOpt[i] = o.(Option)
+	}
+	return &Logger{zap: l.zap.WithOptions(zapOpt...)}
 }
 
 // Init can be called early during application bootstrap to initialize a logger,

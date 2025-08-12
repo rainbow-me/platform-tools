@@ -3,10 +3,10 @@ package interceptors
 import (
 	"context"
 
-	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
+	meta "github.com/rainbow-me/platform-tools/common/metadata"
 	"github.com/rainbow-me/platform-tools/grpc/correlation"
 )
 
@@ -26,18 +26,14 @@ func UnaryCorrelationServerInterceptor(
 	_ *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
 ) (interface{}, error) {
-	md, ok := metadata.FromIncomingContext(ctx)
-	if ok {
-		// Extract and parse correlation-context header
-		headerVal := correlation.GetFirst(md, correlation.ContextCorrelationHeader)
-		if headerVal != "" {
-			ctx = correlation.Set(ctx, correlation.ParseCorrelationHeader(headerVal))
+	ctx = correlation.ContextWithCorrelation(ctx, func() string {
+		md, ok := metadata.FromIncomingContext(ctx)
+		if ok {
+			// Extract and parse correlation-context header
+			return meta.GetFirst(md, correlation.ContextCorrelationHeader)
 		}
-	}
-	// Generate correlation_id if missing
-	if !correlation.Has(ctx, correlation.IDKey) {
-		ctx = correlation.SetID(ctx, uuid.NewString())
-	}
+		return ""
+	})
 	return handler(ctx, req)
 }
 
