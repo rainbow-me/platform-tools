@@ -105,6 +105,15 @@ func InitObservability(serviceName, env string, log *logger.Logger, opts ...Opti
 	for _, opt := range opts {
 		opt(cfg)
 	}
+
+	samplingRules := cfg.SamplingRules
+
+	// Exclude traces from health checks
+	samplingRules = append(samplingRules, SamplingRule{
+		Resource: regexp.MustCompile("GET /health(check)?"),
+		Rate:     0,
+	})
+
 	tracerOpts := []tracer.StartOption{
 		tracer.WithEnv(env),
 		tracer.WithService(serviceName),
@@ -112,7 +121,7 @@ func InitObservability(serviceName, env string, log *logger.Logger, opts ...Opti
 		tracer.WithDebugStack(cfg.DebugStack),
 		tracer.WithAnalytics(cfg.AnalyticsEnabled),
 		tracer.WithSamplerRate(cfg.SamplingRate),
-		tracer.WithSamplingRules(lo.Map(cfg.SamplingRules, convertRule)),
+		tracer.WithSamplingRules(lo.Map(samplingRules, convertRule)),
 	}
 	if cfg.MetricsEnabled {
 		tracerOpts = append(tracerOpts, tracer.WithRuntimeMetrics())
