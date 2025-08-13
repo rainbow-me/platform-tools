@@ -10,38 +10,10 @@ import (
 	"google.golang.org/grpc/metadata"
 
 	"github.com/rainbow-me/platform-tools/common/headers"
+	commonmeta "github.com/rainbow-me/platform-tools/common/metadata"
 )
 
-// RequestInfo contains extracted information from gRPC metadata
-type RequestInfo struct {
-	RequestTime string `json:"requestTime"`
-
-	// Request Identification
-	RequestID     string `json:"requestId"`
-	CorrelationID string `json:"correlationId"`
-	TraceID       string `json:"traceId"`
-
-	// Authentication
-	HasAuth   bool   `json:"hasAuth"`
-	AuthType  string `json:"authType,omitempty"`  // e.g., Bearer, Basic, Digest, ApiKey
-	AuthToken string `json:"authToken,omitempty"` // Masked if sensitive
-
-	// Raw headers for debugging
-	AllHeaders map[string]string `json:"allHeaders,omitempty"`
-}
-
-type requestInfoKey struct{}
-
-func ContextWithRequestInfo(ctx context.Context, info RequestInfo) context.Context {
-	return context.WithValue(ctx, requestInfoKey{}, info)
-}
-
-func RequestInfoFromContext(ctx context.Context) (RequestInfo, bool) {
-	md, ok := ctx.Value(requestInfoKey{}).(RequestInfo)
-	return md, ok
-}
-
-// Parser extracts RequestInfo from gRPC metadata
+// Parser extracts commonmeta.RequestInfo from gRPC metadata
 type Parser struct {
 	opt RequestParserOpt
 }
@@ -58,7 +30,7 @@ func NewRequestParser(opt RequestParserOpt) *Parser {
 	}
 }
 
-// ParseMetadata extracts RequestInfo from metadata and ensures
+// ParseMetadata extracts commonmeta.RequestInfo from metadata and ensures
 // that essential request identifiers are always present by generating
 // them ONLY when not provided by the client. If a request ID is generated,
 // it is added to the metadata for downstream propagation.
@@ -75,13 +47,13 @@ func NewRequestParser(opt RequestParserOpt) *Parser {
 //
 // Returns:
 //   - context.Context: Updated context with request ID in metadata (only if request ID was generated)
-//   - *RequestInfo: Populated request information with guaranteed request ID
-func (p *Parser) ParseMetadata(ctx context.Context) (context.Context, *RequestInfo) {
+//   - *commonmeta.RequestInfo: Populated request information with guaranteed request ID
+func (p *Parser) ParseMetadata(ctx context.Context) (context.Context, *commonmeta.RequestInfo) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		// No metadata present, create new metadata with generated request ID
 		requestID := p.generateRequestID()
-		info := &RequestInfo{
+		info := &commonmeta.RequestInfo{
 			RequestTime: time.Now().Format(time.RFC3339),
 			RequestID:   requestID,
 		}
@@ -95,7 +67,7 @@ func (p *Parser) ParseMetadata(ctx context.Context) (context.Context, *RequestIn
 		return updatedCtx, info
 	}
 
-	info := &RequestInfo{
+	info := &commonmeta.RequestInfo{
 		RequestTime: time.Now().Format(time.RFC3339),
 	}
 
@@ -122,7 +94,7 @@ func (p *Parser) ParseMetadata(ctx context.Context) (context.Context, *RequestIn
 func (p *Parser) extractRequestIDs(
 	ctx context.Context,
 	md metadata.MD,
-	info *RequestInfo,
+	info *commonmeta.RequestInfo,
 ) (context.Context, bool) {
 	// Check common request ID headers
 	requestIDHeaders := []string{
@@ -202,7 +174,7 @@ func (p *Parser) generateRequestID() string {
 }
 
 // extractAuthentication extracts authentication information
-func (p *Parser) extractAuthentication(md metadata.MD, info *RequestInfo) {
+func (p *Parser) extractAuthentication(md metadata.MD, info *commonmeta.RequestInfo) {
 	// Authorization header
 	if authHeader := p.getFirstValue(md, headers.HeaderAuthorization); authHeader != "" {
 		info.HasAuth = true
@@ -217,7 +189,7 @@ func (p *Parser) extractAuthentication(md metadata.MD, info *RequestInfo) {
 }
 
 // extractAllHeaders extracts all headers for debugging
-func (p *Parser) extractAllHeaders(md metadata.MD, info *RequestInfo) {
+func (p *Parser) extractAllHeaders(md metadata.MD, info *commonmeta.RequestInfo) {
 	info.AllHeaders = make(map[string]string)
 
 	for key, values := range md {

@@ -11,14 +11,12 @@ import (
 
 	"github.com/rainbow-me/platform-tools/common/headers"
 	"github.com/rainbow-me/platform-tools/common/logger"
-	"github.com/rainbow-me/platform-tools/common/metadata"
 )
 
 // Standard correlation keys
 const (
 	TenancyKey       = "tenancy"
 	IDKey            = "correlation_id"
-	RequestIDKey     = "request_id"
 	IdempotencyKeyID = "idempotency_key"
 )
 
@@ -27,9 +25,6 @@ const ContextCorrelationHeader = headers.HeaderXCorrelationID
 
 // correlationContextKey is a private type for context keys to avoid collisions
 type correlationContextKey struct{}
-
-// requestIDContextKey is a private type for contex keys to avoid collision
-type requestIDContextKey struct{}
 
 // Key CorrelationKey is the context key for storing correlation data
 var Key = correlationContextKey{}
@@ -203,11 +198,6 @@ func ToZapFields(ctx context.Context) []logger.Field {
 		if value != "" {
 			fields = append(fields, logger.String(key, value))
 		}
-	}
-
-	requestID := metadata.GetRequestIDFromContext(ctx)
-	if requestID != "" {
-		fields = append(fields, logger.String(RequestIDKey, requestID))
 	}
 
 	return fields

@@ -26,7 +26,7 @@ func RequestContextUnaryServerInterceptor() grpc.UnaryServerInterceptor {
 		updatedCtx, requestInfo := parser.ParseMetadata(ctx)
 
 		// Add to context for handlers using custom context key type
-		ctxWithInfo := commonmeta.ContextWithRequestInfo(updatedCtx, requestInfo)
+		ctxWithInfo := commonmeta.ContextWithRequestInfo(updatedCtx, *requestInfo)
 
 		// Call handler
 		resp, err := handler(ctxWithInfo, req)
