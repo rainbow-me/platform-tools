@@ -11,6 +11,7 @@ import (
 
 	"github.com/rainbow-me/platform-tools/common/headers"
 	"github.com/rainbow-me/platform-tools/common/logger"
+	"github.com/rainbow-me/platform-tools/common/metadata"
 )
 
 // Standard correlation keys
@@ -23,7 +24,6 @@ const (
 
 // ContextCorrelationHeader HTTP/gRPC header name for correlation context
 const ContextCorrelationHeader = headers.HeaderXCorrelationID
-const RequestIDHeader = headers.HeaderXRequestID
 
 // correlationContextKey is a private type for context keys to avoid collisions
 type correlationContextKey struct{}
@@ -51,20 +51,6 @@ func ContextWithCorrelation(ctx context.Context, val string) context.Context {
 		ctx = SetID(ctx, uuid.NewString())
 	}
 	return ctx
-}
-
-func ContextWithRequestID(ctx context.Context, val string) context.Context {
-	if val == "" {
-		val = uuid.NewString()
-	}
-	return context.WithValue(ctx, requestIDContextKey{}, val)
-}
-
-func RequestIDFromContext(ctx context.Context) string {
-	if val, ok := ctx.Value(requestIDContextKey{}).(string); ok {
-		return val
-	}
-	return ""
 }
 
 // Set adds correlation values to a context, returning a new context.
@@ -218,7 +204,8 @@ func ToZapFields(ctx context.Context) []logger.Field {
 			fields = append(fields, logger.String(key, value))
 		}
 	}
-	requestID := RequestIDFromContext(ctx)
+
+	requestID := metadata.GetRequestIDFromContext(ctx)
 	if requestID != "" {
 		fields = append(fields, logger.String(RequestIDKey, requestID))
 	}

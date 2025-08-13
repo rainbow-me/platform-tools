@@ -11,6 +11,7 @@ import (
 	"github.com/rainbow-me/platform-tools/common/correlation"
 	"github.com/rainbow-me/platform-tools/common/headers"
 	"github.com/rainbow-me/platform-tools/common/logger"
+	commonmeta "github.com/rainbow-me/platform-tools/common/metadata"
 )
 
 const (
@@ -113,8 +114,15 @@ func TracingMiddleware() (resty.RequestMiddleware, resty.ResponseMiddleware) {
 
 func CorrelationMiddleware() resty.RequestMiddleware {
 	return func(_ *resty.Client, req *resty.Request) error {
-		req.SetHeader(correlation.ContextCorrelationHeader, correlation.Generate(req.Context()))
-		req.SetHeader(correlation.RequestIDHeader, correlation.RequestIDFromContext(req.Context()))
+		reqInfo, found := commonmeta.GetRequestInfoFromContext(req.Context())
+		if found {
+			if reqInfo.RequestID != "" {
+				req.SetHeader(headers.HeaderXRequestID, reqInfo.RequestID)
+			}
+			if reqInfo.CorrelationID != "" {
+				req.SetHeader(correlation.ContextCorrelationHeader, reqInfo.CorrelationID)
+			}
+		}
 		return nil
 	}
 }

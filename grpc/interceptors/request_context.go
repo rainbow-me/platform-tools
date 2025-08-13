@@ -7,14 +7,9 @@ import (
 	"google.golang.org/grpc/metadata"
 
 	"github.com/rainbow-me/platform-tools/common/headers"
+	commonmeta "github.com/rainbow-me/platform-tools/common/metadata"
 	internalmetadata "github.com/rainbow-me/platform-tools/grpc/metadata"
 )
-
-// Define a custom type for context keys to avoid collisions
-type contextKey string
-
-// requestContextKey is the key used to store RequestInfo in context
-const requestContextKey contextKey = "request_info"
 
 // RequestContextUnaryServerInterceptor creates a gRPC interceptor that extracts RequestInfo
 func RequestContextUnaryServerInterceptor() grpc.UnaryServerInterceptor {
@@ -31,35 +26,13 @@ func RequestContextUnaryServerInterceptor() grpc.UnaryServerInterceptor {
 		updatedCtx, requestInfo := parser.ParseMetadata(ctx)
 
 		// Add to context for handlers using custom context key type
-		ctxWithInfo := context.WithValue(updatedCtx, requestContextKey, requestInfo)
+		ctxWithInfo := commonmeta.ContextWithRequestInfo(updatedCtx, requestInfo)
 
 		// Call handler
 		resp, err := handler(ctxWithInfo, req)
 
 		return resp, err
 	}
-}
-
-// GetRequestInfoFromContext extracts RequestInfo from context
-func GetRequestInfoFromContext(ctx context.Context) (*internalmetadata.RequestInfo, bool) {
-	// Check if context is nil
-	if ctx == nil {
-		return &internalmetadata.RequestInfo{}, false
-	}
-
-	// Get value from context
-	val := ctx.Value(requestContextKey)
-	if val == nil {
-		return &internalmetadata.RequestInfo{}, false
-	}
-
-	// Type assert to RequestInfo
-	requestInfo, ok := val.(*internalmetadata.RequestInfo)
-	if !ok || requestInfo == nil {
-		return &internalmetadata.RequestInfo{}, false
-	}
-
-	return requestInfo, true
 }
 
 func UnaryRequestContextClientInterceptor(

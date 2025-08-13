@@ -7,8 +7,9 @@ import (
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"github.com/go-resty/resty/v2"
 
-	"github.com/rainbow-me/platform-tools/common/correlation"
 	"github.com/rainbow-me/platform-tools/common/logger"
+	"github.com/rainbow-me/platform-tools/common/metadata"
+	metadata2 "github.com/rainbow-me/platform-tools/grpc/metadata"
 	restyinterceptors "github.com/rainbow-me/platform-tools/http/interceptors/resty"
 )
 
@@ -29,8 +30,16 @@ func run() error {
 
 	span := tracer.StartSpan("ping.request")
 	ctx := tracer.ContextWithSpan(context.Background(), span)
-	ctx = correlation.SetID(ctx, "my-correlation-id")
-	ctx = correlation.ContextWithRequestID(ctx, "my-request-id")
+	ctx = metadata.ContextWithRequestInfo(ctx, metadata2.RequestInfo{
+		RequestTime:   "",
+		RequestID:     "",
+		CorrelationID: "",
+		TraceID:       "",
+		HasAuth:       false,
+		AuthType:      "",
+		AuthToken:     "",
+		AllHeaders:    nil,
+	})
 
 	l, err := logger.Instance()
 	if err != nil {
