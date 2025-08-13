@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 	"log"
+	gohttp "net/http"
 
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
-	"github.com/go-resty/resty/v2"
 
 	"github.com/rainbow-me/platform-tools/common/logger"
 	"github.com/rainbow-me/platform-tools/common/metadata"
-	restyinterceptors "github.com/rainbow-me/platform-tools/http/interceptors/resty"
+	"github.com/rainbow-me/platform-tools/http"
 )
 
 func main() {
@@ -24,8 +24,12 @@ func run() error {
 	}
 	defer tracer.Stop()
 
-	client := resty.New()
-	restyinterceptors.InjectInterceptors(client)
+	l, err := logger.Instance()
+	if err != nil {
+		return err
+	}
+
+	client := http.NewRestyWithClient(gohttp.DefaultClient, l)
 
 	span := tracer.StartSpan("ping.request")
 	ctx := tracer.ContextWithSpan(context.Background(), span)
@@ -34,9 +38,9 @@ func run() error {
 		CorrelationID: "my-correlation-id",
 	})
 
-	l := logger.FromContext(ctx)
+	l = logger.FromContext(ctx) // ensure it contains request info
 	l.Info("Sending ping request", logger.String("trace_id", span.Context().TraceID()))
 
-	_, err := client.R().SetContext(ctx).Get("http://localhost:8080/ping")
+	_, err = client.R().SetContext(ctx).Get("http://localhost:8080/ping")
 	return err
 }
