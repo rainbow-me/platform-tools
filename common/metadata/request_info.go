@@ -55,8 +55,12 @@ func GetRequestInfoFromContext(ctx context.Context) (RequestInfo, bool) {
 }
 
 func (r RequestInfo) ToZapFields() []logger.Field {
-	return []logger.Field{
-		logger.String("request_id", r.RequestID),
-		logger.String("correlation_id", r.CorrelationID),
+	var fields []logger.Field
+	if r.RequestID != "" {
+		fields = append(fields, logger.String("request_id", r.RequestID))
 	}
+	if r.CorrelationID != "" {
+		fields = append(fields, logger.String("correlation_id", r.CorrelationID))
+	}
+	return fields
 }
