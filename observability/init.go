@@ -1,6 +1,7 @@
 package observability
 
 import (
+	"os"
 	"regexp"
 
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
@@ -86,8 +87,13 @@ func WithSamplingRules(rules []SamplingRule) Option {
 type StopFunc func()
 
 // InitObservability initializes our observability stack with sensible defaults that can be overridden.
+// Only enables tracing if TRACING_ENABLED is set to 'true' in the environment.
 // Don't forget to add a shutdown hook for deferred calling of the returned StopFunc.
 func InitObservability(serviceName, env string, log *logger.Logger, opts ...Option) StopFunc {
+	enabled := os.Getenv("TRACING_ENABLED") == "true"
+	if !enabled {
+		return func() {} // no-op StopFunc
+	}
 	log.Info("Starting tracer")
 	cfg := &config{
 		MetricsEnabled:   true,
