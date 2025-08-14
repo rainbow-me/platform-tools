@@ -172,6 +172,7 @@ func NewDefaultServerUnaryChain(
 	))
 
 	chain.Push("request-context", RequestContextUnaryServerInterceptor())
+	chain.Push("correlation-context", UnaryCorrelationServerInterceptor)
 	chain.Push("headers", ResponseHeadersInterceptor())
 
 	// Add logging interceptor if logger is provided

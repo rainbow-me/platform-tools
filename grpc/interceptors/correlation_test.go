@@ -3,7 +3,12 @@ package interceptors_test
 import (
 	"context"
 	"errors"
+	"fmt"
+	"github.com/rainbow-me/platform-tools/common/env"
+	"github.com/rainbow-me/platform-tools/common/logger"
+	"github.com/rainbow-me/platform-tools/grpc/grpcserver"
 	"net"
+	"os"
 	"testing"
 	"time"
 
@@ -27,8 +32,11 @@ type echoServer struct {
 }
 
 func (s *echoServer) Echo(ctx context.Context, req *pb.EchoRequest) (*pb.EchoResponse, error) {
-	// Return the message and correlation ID from context for test verification
+
 	corrID := correlation.ID(ctx)
+	// Return the message and correlation ID from context for test verification
+	info, ok := interceptors.GetRequestInfoFromContext(ctx)
+	fmt.Println("Request Info:", info, ok, "Correlation ID:", corrID)
 	return &pb.EchoResponse{
 		Message:       req.GetMessage(),
 		CorrelationId: corrID,
@@ -80,10 +88,25 @@ func TestCorrelationPropagationE2E(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-
+			l, _ := logger.Instance()
 			// Set up in-memory listener for downstream server
 			listener := bufconn.Listen(bufSize)
-			srv := grpc.NewServer(grpc.UnaryInterceptor(interceptors.UnaryCorrelationServerInterceptor))
+			//srv := grpc.NewServer(
+			//	//grpc.UnaryInterceptor(interceptors.UnaryCorrelationServerInterceptor)
+			//	grpc.ChainUnaryInterceptor(
+			//		interceptors.RequestContextUnaryServerInterceptor(),
+			//		interceptors.UnaryCorrelationServerInterceptor,
+			//	),
+			//)
+
+			// Set up the interceptor chain for gRPC requests.
+			chain := interceptors.NewDefaultServerUnaryChain(
+				"test-service",
+				os.Getenv(env.ApplicationEnvKey),
+				l,
+				interceptors.WithBasicLogging(true, true, logger.DebugLevel),
+			)
+			srv := grpcserver.NewServerWithCustomInterceptorChain(chain)
 			pb.RegisterEchoServiceServer(srv, &echoServer{})
 			serverDone := make(chan error, 1)
 			go func() {
@@ -91,13 +114,16 @@ func TestCorrelationPropagationE2E(t *testing.T) {
 			}()
 
 			defer srv.Stop()
-
 			// Set up client with interceptor
 			conn, err := grpc.NewClient( //nolint:govet
 				"passthrough:///bufnet",
 				grpc.WithContextDialer(dialer(listener)),
 				grpc.WithTransportCredentials(insecure.NewCredentials()),
-				grpc.WithUnaryInterceptor(interceptors.UnaryCorrelationClientInterceptor),
+				grpc.WithChainUnaryInterceptor(
+					interceptors.UnaryRequestContextClientInterceptor,
+					interceptors.UnaryCorrelationClientInterceptor,
+					interceptors.UnaryUpstreamInfoClientInterceptor("test-service"),
+				),
 			)
 			require.NoError(t, err, "Failed to create client connection")
 
