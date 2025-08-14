@@ -119,9 +119,10 @@ func CorrelationMiddleware() resty.RequestMiddleware {
 			if reqInfo.RequestID != "" {
 				req.SetHeader(headers.HeaderXRequestID, reqInfo.RequestID)
 			}
-			if reqInfo.CorrelationID != "" {
-				req.SetHeader(correlation.ContextCorrelationHeader, reqInfo.CorrelationID)
-			}
+		}
+		if !correlation.IsEmpty(req.Context()) {
+			header := correlation.Generate(req.Context())
+			req.SetHeader(correlation.ContextCorrelationHeader, header)
 		}
 		return nil
 	}
