@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/cockroachdb/errors"
+	"github.com/samber/lo"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
@@ -15,8 +16,11 @@ import (
 const (
 	MessageKey    = "message"
 	StacktraceKey = "stacktrace"
-	traceIDKey    = "dd.trace_id"
-	spanIDKey     = "dd.span_id"
+	PanicValueKey = "panic_value"
+	PanicTypeKey  = "panic_type"
+
+	traceIDKey = "dd.trace_id"
+	spanIDKey  = "dd.span_id"
 )
 
 var (
@@ -25,6 +29,11 @@ var (
 	once   sync.Once
 )
 
+// Logger abstracts away the underlying log implementation, by exposing our own methods, which allow both structured
+// and unstructured logging. It is environment aware and customizes options accordingly.
+// For example, it will print human-readable, tab-separated log lines for local environment and json logs in non-local.
+// By default, the log level is DEBUG in all nonprod environments, and INFO in prod.
+// Such behaviour cna be overridden by setting the LOG_LEVEL env var, see LevelFromString.
 type Logger struct {
 	zap *zap.Logger
 }
@@ -113,8 +122,13 @@ func (l *Logger) With(fields ...Field) *Logger {
 	return &Logger{zap: l.zap.With(fields...)}
 }
 
-func (l *Logger) WithOptions(option ...zap.Option) *Logger {
-	return &Logger{zap: l.zap.WithOptions(option...)}
+type Option zap.Option
+
+func (l *Logger) WithOptions(option ...Option) *Logger {
+	zapOpt := lo.Map(option, func(item Option, _ int) zap.Option {
+		return item
+	})
+	return &Logger{zap: l.zap.WithOptions(zapOpt...)}
 }
 
 // Init can be called early during application bootstrap to initialize a logger,
@@ -122,10 +136,8 @@ func (l *Logger) WithOptions(option ...zap.Option) *Logger {
 // Note that in case of failure to instantiate a Logger, this will panic.
 func Init() error {
 	once.Do(func() {
-		currentEnv, err := env.FromString(os.Getenv(env.ApplicationEnvKey))
-		if err != nil {
-			currentEnv = env.EnvironmentDevelopment
-		}
+		var err error
+		currentEnv := env.GetApplicationEnvOrDefault(env.EnvironmentDevelopment)
 		zLog, err = newZapLogger(currentEnv)
 		if err != nil {
 			errLog = errors.Wrap(err, "failed to initialize logger")
@@ -177,12 +189,14 @@ func newZapLogger(environment env.Environment) (*Logger, error) {
 	switch environment {
 	case env.EnvironmentLocal:
 		config = zap.NewDevelopmentConfig()
-		config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+		config.Level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
+		config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder // human-readable log lines
 		options = append(options, zap.AddStacktrace(zap.PanicLevel))
 
 	case env.EnvironmentLocalDocker, env.EnvironmentDevelopment, env.EnvironmentStaging:
-		// Development/Staging: JSON logs for Datadog ingestion
+		// Development/Staging: JSON logs with structured metadata
 		config = zap.NewProductionConfig()
+		config.Level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
 		config.EncoderConfig = encoderConfig
 		options = append(options, zap.AddStacktrace(zap.PanicLevel))
 
@@ -192,6 +206,11 @@ func newZapLogger(environment env.Environment) (*Logger, error) {
 		config.EncoderConfig = encoderConfig
 		config.Level.SetLevel(zap.InfoLevel)
 		options = append(options, zap.AddStacktrace(zap.PanicLevel))
+	}
+
+	// Override log level based on env var, if present
+	if lvl, ok := LevelFromString(os.Getenv("LOG_LEVEL")); ok {
+		config.Level.SetLevel(zapcore.Level(lvl))
 	}
 
 	// Build the logger

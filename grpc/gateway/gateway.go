@@ -16,8 +16,8 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/rainbow-me/platform-tools/common/headers"
 	"github.com/rainbow-me/platform-tools/common/logger"
-	internalmetadata "github.com/rainbow-me/platform-tools/common/metadata"
 )
 
 const (
@@ -138,7 +138,7 @@ type Gateway struct {
 	Endpoints            map[string][]RegisterFunc
 	Mux                  *http.ServeMux
 	GatewayMuxOptions    []runtime.ServeMuxOption
-	HeaderConfig         internalmetadata.HeaderConfig
+	HeaderConfig         headers.HeaderConfig
 	Logger               *logger.Logger
 	Timeout              time.Duration
 	EnableRequestLogging bool
@@ -159,8 +159,8 @@ func NewGateway(options ...Option) (*http.ServeMux, error) {
 		},
 		Mux:     http.NewServeMux(),
 		Timeout: DefaultTimeout,
-		HeaderConfig: internalmetadata.HeaderConfig{
-			HeadersToForward: internalmetadata.GetHeadersToForward(),
+		HeaderConfig: headers.HeaderConfig{
+			HeadersToForward: headers.GetHeadersToForward(),
 		},
 		CORS: &CORS{
 			Enabled: false,

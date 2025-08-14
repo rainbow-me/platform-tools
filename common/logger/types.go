@@ -1,6 +1,8 @@
 package logger
 
 import (
+	"fmt"
+	"runtime/debug"
 	"strconv"
 	"strings"
 
@@ -26,6 +28,7 @@ var (
 	Int32      = zap.Int32
 	Int16      = zap.Int16
 	Int8       = zap.Int8
+	Object     = zap.Object
 	String     = zap.String
 	Uint       = zap.Uint
 	Uint64     = zap.Uint64
@@ -39,6 +42,10 @@ var (
 
 type Level zapcore.Level
 
+func (l Level) Enabled(lvl zapcore.Level) bool {
+	return Level(lvl) >= l
+}
+
 const (
 	DebugLevel  = Level(zapcore.DebugLevel)
 	InfoLevel   = Level(zapcore.InfoLevel)
@@ -49,30 +56,61 @@ const (
 	FatalLevel  = Level(zapcore.FatalLevel)
 )
 
-func LevelFromString(s string) Level {
+// LevelFromString returns the level associated with the string argument in a case-insensitive manner.
+// If the string is not recognised as a valid log level, it defaults to InfoLevel and returns false in the second
+// return parameter.
+func LevelFromString(s string) (Level, bool) {
 	switch strings.ToLower(s) {
 	case "debug":
-		return DebugLevel
+		return DebugLevel, true
 	case "info":
-		return InfoLevel
+		return InfoLevel, true
 	case "warn", "warning":
-		return WarnLevel
+		return WarnLevel, true
 	case "error":
-		return ErrorLevel
+		return ErrorLevel, true
 	case "dpanic":
-		return DPanicLevel
+		return DPanicLevel, true
 	case "panic":
-		return PanicLevel
+		return PanicLevel, true
 	case "fatal":
-		return FatalLevel
+		return FatalLevel, true
 	default:
-		return InfoLevel // default to info
+		return InfoLevel, false
 	}
 }
+
+var AddStackTrace = zap.AddStacktrace
 
 func WithTrace(ctx *tracer.SpanContext) []Field {
 	return []Field{
 		String(traceIDKey, ctx.TraceID()),
 		String(spanIDKey, strconv.FormatUint(ctx.SpanID(), 10)),
 	}
+}
+
+func WithPanic(p any) []Field {
+	msg := extractPanicMessage(p)
+	panicType := extractPanicType(msg)
+	return []Field{
+		String(PanicValueKey, msg),
+		String(PanicTypeKey, panicType),
+		ByteString(StacktraceKey, debug.Stack()),
+	}
+}
+
+// extractPanicMessage safely extracts a string representation of the panic value
+func extractPanicMessage(panicValue any) string {
+	if panicValue == nil {
+		return "unknown panic (nil value)"
+	}
+	return fmt.Sprintf("%v", panicValue)
+}
+
+// extractPanicType safely extracts the type information of the panic value
+func extractPanicType(panicValue any) string {
+	if panicValue == nil {
+		return "nil"
+	}
+	return fmt.Sprintf("%T", panicValue)
 }

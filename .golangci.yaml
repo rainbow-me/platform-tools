@@ -410,3 +410,4 @@ issues:
     - mocks
     - mock
     - generated
+    - /examples

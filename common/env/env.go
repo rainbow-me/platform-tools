@@ -2,6 +2,7 @@ package env
 
 import (
 	"fmt"
+	"os"
 	"slices"
 	"strings"
 )
@@ -44,4 +45,28 @@ func FromString(environment string) (Environment, error) {
 		return "", err
 	}
 	return env, nil
+}
+
+// GetApplicationEnv returns the environment if found in env vars and is valid
+func GetApplicationEnv() (Environment, error) {
+	return FromString(os.Getenv(ApplicationEnvKey))
+}
+
+// GetApplicationEnvOrDefault returns the environment if found, else defaults to the specified env
+func GetApplicationEnvOrDefault(defaultEnv Environment) Environment {
+	env, err := GetApplicationEnv()
+	if err != nil {
+		env = defaultEnv
+	}
+	return env
+}
+
+// GetApplicationEnvSafe returns the environment if found, else defaults to EnvironmentLocal
+func GetApplicationEnvSafe() Environment {
+	return GetApplicationEnvOrDefault(EnvironmentLocal)
+}
+
+func IsLocalApplicationEnv() bool {
+	env := GetApplicationEnvSafe()
+	return env == EnvironmentLocal || env == EnvironmentLocalDocker
 }

@@ -105,6 +105,9 @@ coverage:
 .PHONY: test
 test: info test-setup unit coverage
 
+.PHONY: test/fast
+test/fast:
+	go test ./...
 
 .PHONY: govulncheck
 govulncheck:

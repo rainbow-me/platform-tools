@@ -15,8 +15,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 
+	"github.com/rainbow-me/platform-tools/common/headers"
 	"github.com/rainbow-me/platform-tools/common/logger"
-	internalmetadata "github.com/rainbow-me/platform-tools/common/metadata"
 	"github.com/rainbow-me/platform-tools/common/test"
 	"github.com/rainbow-me/platform-tools/grpc/gateway"
 	testpb "github.com/rainbow-me/platform-tools/grpc/protos/gen/go/test"
@@ -173,7 +173,7 @@ func TestGateway_validatePrefix(t *testing.T) {
 
 func TestGateway_metadataAnnotator(t *testing.T) {
 	g := &gateway.Gateway{
-		HeaderConfig: internalmetadata.HeaderConfig{
+		HeaderConfig: headers.HeaderConfig{
 			HeadersToForward: []string{"X-Test"},
 		},
 		Logger: logger.NoOp(),
@@ -188,7 +188,7 @@ func TestGateway_metadataAnnotator(t *testing.T) {
 
 func TestGateway_headerMatcher(t *testing.T) {
 	g := &gateway.Gateway{
-		HeaderConfig: internalmetadata.HeaderConfig{
+		HeaderConfig: headers.HeaderConfig{
 			HeadersToForward: []string{"X-Test"},
 		},
 	}
@@ -203,7 +203,7 @@ func TestGateway_headerMatcher(t *testing.T) {
 
 func TestGateway_outgoingHeaderMatcher(t *testing.T) {
 	g := &gateway.Gateway{
-		HeaderConfig: internalmetadata.HeaderConfig{
+		HeaderConfig: headers.HeaderConfig{
 			HeadersToForward: []string{"x-test"},
 		},
 	}
@@ -222,7 +222,7 @@ func TestGateway_outgoingHeaderMatcher(t *testing.T) {
 
 func TestGateway_shouldForwardResponseHeader(t *testing.T) {
 	g := &gateway.Gateway{
-		HeaderConfig: internalmetadata.HeaderConfig{
+		HeaderConfig: headers.HeaderConfig{
 			HeadersToForward: []string{"X-Test"},
 		},
 	}
@@ -245,7 +245,7 @@ func TestGateway_protoMessageErrorHandler(t *testing.T) {
 
 func TestGateway_responseHeaderHandler(t *testing.T) {
 	g := &gateway.Gateway{
-		HeaderConfig: internalmetadata.HeaderConfig{
+		HeaderConfig: headers.HeaderConfig{
 			HeadersToForward: []string{"X-Test"},
 		},
 		Logger: logger.NoOp(),
@@ -270,7 +270,7 @@ func TestGateway_responseHeaderHandler(t *testing.T) {
 
 func TestGateway_responseHeaderHandler_Trailers(t *testing.T) {
 	g := &gateway.Gateway{
-		HeaderConfig: internalmetadata.HeaderConfig{
+		HeaderConfig: headers.HeaderConfig{
 			HeadersToForward: []string{"X-Trailer"},
 		},
 		Logger: logger.NoOp(),
@@ -301,7 +301,6 @@ func TestGateway_wrapHandler(t *testing.T) {
 }
 
 func TestGateway_registerEndpoints(t *testing.T) {
-	logger := logger.NoOp()
 	g := &gateway.Gateway{
 		Endpoints: map[string][]gateway.RegisterFunc{
 			"/api/": {func(_ context.Context, _ *runtime.ServeMux, _ string, _ []grpc.DialOption) error {
@@ -312,8 +311,8 @@ func TestGateway_registerEndpoints(t *testing.T) {
 		ServerAddress:        "localhost:9090",
 		ServerDialOptions:    []grpc.DialOption{},
 		GatewayMuxOptions:    []runtime.ServeMuxOption{},
-		HeaderConfig:         internalmetadata.HeaderConfig{HeadersToForward: []string{}},
-		Logger:               logger,
+		HeaderConfig:         headers.HeaderConfig{HeadersToForward: []string{}},
+		Logger:               logger.NoOp(),
 		Timeout:              5 * time.Second,
 		EnableRequestLogging: true,
 		EnableCompression:    true,

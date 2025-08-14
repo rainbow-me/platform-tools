@@ -7,10 +7,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
-	internalmetadata "github.com/rainbow-me/platform-tools/common/metadata"
+	"github.com/rainbow-me/platform-tools/common/headers"
 )
 
-const UpstreamServiceHeaderKey = internalmetadata.HeaderClientTaggingHeader
+const UpstreamServiceHeaderKey = headers.HeaderClientTaggingHeader
 
 // UnaryUpstreamInfoClientInterceptor creates a new interceptor with the given server name
 func UnaryUpstreamInfoClientInterceptor(serverName string) grpc.UnaryClientInterceptor {

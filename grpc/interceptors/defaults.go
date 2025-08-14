@@ -171,6 +171,7 @@ func NewDefaultServerUnaryChain(
 		grpctrace.WithUntracedMethods(healthCheckMethod),
 	))
 
+	chain.Push("correlation-context", UnaryCorrelationServerInterceptor)
 	chain.Push("request-context", RequestContextUnaryServerInterceptor())
 	chain.Push("headers", ResponseHeadersInterceptor())
 
