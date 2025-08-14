@@ -2,6 +2,7 @@ package logger
 
 import (
 	"fmt"
+	"os"
 	"sync"
 
 	"github.com/cockroachdb/errors"
@@ -28,6 +29,11 @@ var (
 	once   sync.Once
 )
 
+// Logger abstracts away the underlying log implementation, by exposing our own methods, which allow both structured
+// and unstructured logging. It is environment aware and customizes options accordingly.
+// For example, it will print human-readable, tab-separated log lines for local environment and json logs in non-local.
+// By default, the log level is DEBUG in all nonprod environments, and INFO in prod.
+// Such behaviour cna be overridden by setting the LOG_LEVEL env var, see LevelFromString.
 type Logger struct {
 	zap *zap.Logger
 }
@@ -183,11 +189,12 @@ func newZapLogger(environment env.Environment) (*Logger, error) {
 	switch environment {
 	case env.EnvironmentLocal:
 		config = zap.NewDevelopmentConfig()
-		config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+		config.Level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
+		config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder // human-readable log lines
 		options = append(options, zap.AddStacktrace(zap.PanicLevel))
 
 	case env.EnvironmentLocalDocker, env.EnvironmentDevelopment, env.EnvironmentStaging:
-		// Development/Staging: JSON logs for Datadog ingestion
+		// Development/Staging: JSON logs with structured metadata
 		config = zap.NewProductionConfig()
 		config.Level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
 		config.EncoderConfig = encoderConfig
@@ -201,7 +208,10 @@ func newZapLogger(environment env.Environment) (*Logger, error) {
 		options = append(options, zap.AddStacktrace(zap.PanicLevel))
 	}
 
-	// TODO add env var to override the level regardles of env
+	// Override log level based on env var, if present
+	if lvl, ok := LevelFromString(os.Getenv("LOG_LEVEL")); ok {
+		config.Level.SetLevel(zapcore.Level(lvl))
+	}
 
 	// Build the logger
 	z, err := config.Build(options...)

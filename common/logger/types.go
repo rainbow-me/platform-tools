@@ -56,24 +56,27 @@ const (
 	FatalLevel  = Level(zapcore.FatalLevel)
 )
 
-func LevelFromString(s string) Level {
+// LevelFromString returns the level associated with the string argument in a case-insensitive manner.
+// If the string is not recognised as a valid log level, it defaults to InfoLevel and returns false in the second
+// return parameter.
+func LevelFromString(s string) (Level, bool) {
 	switch strings.ToLower(s) {
 	case "debug":
-		return DebugLevel
+		return DebugLevel, true
 	case "info":
-		return InfoLevel
+		return InfoLevel, true
 	case "warn", "warning":
-		return WarnLevel
+		return WarnLevel, true
 	case "error":
-		return ErrorLevel
+		return ErrorLevel, true
 	case "dpanic":
-		return DPanicLevel
+		return DPanicLevel, true
 	case "panic":
-		return PanicLevel
+		return PanicLevel, true
 	case "fatal":
-		return FatalLevel
+		return FatalLevel, true
 	default:
-		return InfoLevel // default to info
+		return InfoLevel, false
 	}
 }
 
