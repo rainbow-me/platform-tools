@@ -2,6 +2,7 @@ package logger
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"sync"
 
@@ -35,11 +36,19 @@ var (
 // By default, the log level is DEBUG in all nonprod environments, and INFO in prod.
 // Such behaviour cna be overridden by setting the LOG_LEVEL env var, see LevelFromString.
 type Logger struct {
-	zap *zap.Logger
+	root    *zap.Logger
+	zap     *zap.Logger
+	fields  map[string]Field
+	options []Option
 }
 
 func NewLogger(zap *zap.Logger) *Logger {
-	return &Logger{zap: zap}
+	return &Logger{
+		root:    zap,
+		zap:     zap,
+		fields:  make(map[string]Field),
+		options: []Option{},
+	}
 }
 
 func (l *Logger) Log(lvl Level, msg string, fields ...Field) {
@@ -119,16 +128,39 @@ func (l *Logger) DPanic(msg string, v ...any) {
 }
 
 func (l *Logger) With(fields ...Field) *Logger {
-	return &Logger{zap: l.zap.With(fields...)}
+	return l.clone(fields, nil)
 }
 
 type Option zap.Option
 
-func (l *Logger) WithOptions(option ...Option) *Logger {
-	zapOpt := lo.Map(option, func(item Option, _ int) zap.Option {
+func (l *Logger) WithOptions(options ...Option) *Logger {
+	return l.clone(nil, options)
+}
+
+func (l *Logger) clone(newFields []Field, newOptions []Option) *Logger {
+	newLogger := &Logger{
+		root:    l.root,
+		fields:  maps.Clone(l.fields),
+		options: l.options,
+	}
+	// overwrite fields and transform to list
+	for _, field := range newFields {
+		l.fields[field.Key] = field
+	}
+	fields := lo.Values(l.fields)
+
+	// append options
+	if len(newOptions) > 0 {
+		l.options = append(l.options, newOptions...)
+	}
+	options := lo.Map(l.options, func(item Option, _ int) zap.Option {
 		return item
 	})
-	return &Logger{zap: l.zap.WithOptions(zapOpt...)}
+
+	// clone the root and create a new zap with all the fields and options
+	newLogger.zap = (*l.root).With(fields...).WithOptions(options...)
+
+	return newLogger
 }
 
 // Init can be called early during application bootstrap to initialize a logger,
