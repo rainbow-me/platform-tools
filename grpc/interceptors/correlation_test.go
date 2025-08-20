@@ -26,8 +26,6 @@ import (
 	gininterceptors "github.com/rainbow-me/platform-tools/http/interceptors/gin"
 )
 
-// TODO martin add E2E coverage grpc -> resty client -> gin as well
-
 const bufSize = 1024 * 1024
 
 // Request/Response types for Gin server
