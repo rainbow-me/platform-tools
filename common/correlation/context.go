@@ -107,7 +107,8 @@ func SetKey(ctx context.Context, key, value string) context.Context {
 		span.SetBaggageItem(key, value)
 	}
 
-	return Set(ctx, newMap)
+	ctx = context.WithValue(ctx, Key, newMap)
+	return logger.ContextWithFields(ctx, toLogFields(newMap))
 }
 
 // Get returns the correlation data from the context.
@@ -159,7 +160,7 @@ func Delete(ctx context.Context, key string) context.Context {
 	newMap := maps.Clone(existing)
 	delete(newMap, key)
 
-	return Set(ctx, newMap)
+	return context.WithValue(ctx, Key, newMap)
 }
 
 // Merge combines correlation data from multiple contexts.

@@ -18,7 +18,8 @@ func CorrelationMiddleware(c *gin.Context) {
 }
 
 // RequestInfoMiddleware propagates a subset of RequestInfo fields to the context.
-// We only support RequestID and CorrelationID for now via http, while full support is obtained only via grpc interceptors.
+// We only support RequestID and CorrelationID for now via http, while full support is obtained only
+// via grpc interceptors.
 func RequestInfoMiddleware(c *gin.Context) {
 	requestInfo := metadata.RequestInfo{
 		RequestID:     c.GetHeader(headers.HeaderXRequestID),
