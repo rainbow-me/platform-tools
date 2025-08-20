@@ -1,6 +1,6 @@
 module github.com/rainbow-me/platform-tools
 
-go 1.23.10
+go 1.23.12
 
 require (
 	github.com/DataDog/dd-trace-go/contrib/google.golang.org/grpc/v2 v2.2.2
