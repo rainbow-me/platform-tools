@@ -70,6 +70,7 @@ func DefaultInterceptors(opts ...InterceptorOpt) []gin.HandlerFunc {
 	}
 	if cfg.CorrelationEnabled {
 		middlewares = append(middlewares, CorrelationMiddleware)
+		middlewares = append(middlewares, RequestInfoMiddleware)
 	}
 	if cfg.CompressionLevel != gzip.NoCompression {
 		middlewares = append(middlewares, gzip.Gzip(cfg.CompressionLevel))

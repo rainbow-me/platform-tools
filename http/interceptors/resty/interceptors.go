@@ -58,6 +58,7 @@ func InjectInterceptors(client *resty.Client, opts ...InterceptorOpt) {
 	}
 	if cfg.CorrelationEnabled {
 		client.OnBeforeRequest(CorrelationMiddleware())
+		client.OnBeforeRequest(RequestInfoMiddleware())
 	}
 }
 
@@ -114,15 +115,21 @@ func TracingMiddleware() (resty.RequestMiddleware, resty.ResponseMiddleware) {
 
 func CorrelationMiddleware() resty.RequestMiddleware {
 	return func(_ *resty.Client, req *resty.Request) error {
+		if !correlation.IsEmpty(req.Context()) {
+			header := correlation.Generate(req.Context())
+			req.SetHeader(correlation.ContextCorrelationHeader, header)
+		}
+		return nil
+	}
+}
+
+func RequestInfoMiddleware() resty.RequestMiddleware {
+	return func(_ *resty.Client, req *resty.Request) error {
 		reqInfo, found := commonmeta.GetRequestInfoFromContext(req.Context())
 		if found {
 			if reqInfo.RequestID != "" {
 				req.SetHeader(headers.HeaderXRequestID, reqInfo.RequestID)
 			}
-		}
-		if !correlation.IsEmpty(req.Context()) {
-			header := correlation.Generate(req.Context())
-			req.SetHeader(correlation.ContextCorrelationHeader, header)
 		}
 		return nil
 	}

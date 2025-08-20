@@ -145,20 +145,20 @@ func (l *Logger) clone(newFields []Field, newOptions []Option) *Logger {
 	}
 	// overwrite fields and transform to list
 	for _, field := range newFields {
-		l.fields[field.Key] = field
+		newLogger.fields[field.Key] = field
 	}
-	fields := lo.Values(l.fields)
+	fields := lo.Values(newLogger.fields)
 
 	// append options
 	if len(newOptions) > 0 {
-		l.options = append(l.options, newOptions...)
+		newLogger.options = append(newLogger.options, newOptions...)
 	}
-	options := lo.Map(l.options, func(item Option, _ int) zap.Option {
+	options := lo.Map(newLogger.options, func(item Option, _ int) zap.Option {
 		return item
 	})
 
-	// clone the root and create a new zap with all the fields and options
-	newLogger.zap = (*l.root).With(fields...).WithOptions(options...)
+	// create a new zap with all the fields and options
+	newLogger.zap = l.root.With(fields...).WithOptions(options...)
 
 	return newLogger
 }

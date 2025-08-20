@@ -7,6 +7,7 @@ import (
 
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 
+	"github.com/rainbow-me/platform-tools/common/correlation"
 	"github.com/rainbow-me/platform-tools/common/logger"
 	"github.com/rainbow-me/platform-tools/common/metadata"
 	"github.com/rainbow-me/platform-tools/http"
@@ -31,12 +32,9 @@ func run() error {
 
 	client := http.NewRestyWithClient(gohttp.DefaultClient, l)
 
-	span := tracer.StartSpan("ping.request")
-	ctx := tracer.ContextWithSpan(context.Background(), span)
-	ctx = metadata.ContextWithRequestInfo(ctx, metadata.RequestInfo{
-		RequestID:     "my-request-id",
-		CorrelationID: "my-correlation-id",
-	})
+	span, ctx := tracer.StartSpanFromContext(context.Background(), "ping.request")
+	ctx = correlation.SetKey(ctx, "my-key", "my-value")
+	ctx = metadata.ContextWithRequestInfo(ctx, metadata.RequestInfo{RequestID: "my-request-id"})
 
 	l = logger.FromContext(ctx) // ensure it contains request info
 	l.Info("Sending ping request", logger.String("trace_id", span.Context().TraceID()))
