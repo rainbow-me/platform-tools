@@ -28,7 +28,7 @@ func run() error {
 
 	r := gin.New()
 
-	r.Use(gininterceptors.DefaultInterceptors(gininterceptors.WithHttpTrace())...)
+	r.Use(gininterceptors.DefaultInterceptors(gininterceptors.WithHTTPTrace())...)
 
 	r.POST("/ping", func(c *gin.Context) {
 		logger.FromContext(c.Request.Context()).Info("Received ping request")

@@ -16,8 +16,8 @@ type interceptorCfg struct {
 	TracingEnabled     bool
 	CorrelationEnabled bool
 	CompressionLevel   int
-	HttpDebug          bool //
-	HttpTrace          bool // set to true as well to print every http request and response to logs
+	HTTPDebug          bool
+	HTTPTrace          bool
 	Timeout            time.Duration
 }
 
@@ -44,18 +44,18 @@ func WithTracingEnabled(enabled bool) InterceptorOpt {
 	}
 }
 
-// WithHttpDebug enables printing log line with request info and duration for every request
-func WithHttpDebug() InterceptorOpt {
+// WithHTTPDebug enables printing log line with request info and duration for every request
+func WithHTTPDebug() InterceptorOpt {
 	return func(cfg *interceptorCfg) {
-		cfg.HttpDebug = true
+		cfg.HTTPDebug = true
 	}
 }
 
-// WithHttpTrace enables deeper http debugging by also printing the whole request and response body
-func WithHttpTrace() InterceptorOpt {
+// WithHTTPTrace enables deeper http debugging by also printing the whole request and response body
+func WithHTTPTrace() InterceptorOpt {
 	return func(cfg *interceptorCfg) {
-		cfg.HttpDebug = true
-		cfg.HttpTrace = true
+		cfg.HTTPDebug = true
+		cfg.HTTPTrace = true
 	}
 }
 
@@ -80,8 +80,8 @@ func DefaultInterceptors(opts ...InterceptorOpt) []gin.HandlerFunc {
 	}
 	middlewares := []gin.HandlerFunc{
 		RequestLogging(loggingCfg{
-			debug: cfg.HttpDebug,
-			trace: cfg.HttpTrace,
+			debug: cfg.HTTPDebug,
+			trace: cfg.HTTPTrace,
 		}),
 		PanicRecoveryMiddleware,
 		ErrorHandlingMiddleware,

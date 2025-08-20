@@ -411,3 +411,6 @@ issues:
     - mock
     - generated
     - /examples
+
+  exclude-files:
+    - ".*_test\\.go$"

@@ -115,7 +115,7 @@ func TestCorrelationPropagationE2E(t *testing.T) {
 			// Set up Gin server
 			gin.SetMode(gin.TestMode)
 			r := gin.New()
-			r.Use(gininterceptors.DefaultInterceptors(gininterceptors.WithHttpTrace())...)
+			r.Use(gininterceptors.DefaultInterceptors(gininterceptors.WithHTTPTrace())...)
 			r.POST("/ping", func(c *gin.Context) {
 				var req Ping
 				if err := c.ShouldBindJSON(&req); err != nil {
