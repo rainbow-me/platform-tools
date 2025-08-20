@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 
@@ -58,6 +57,5 @@ func run() error {
 func downstreamLogic(ctx context.Context) {
 	span, ctx := observability.StartSpan(ctx, "downstream.logic")
 	defer span.Finish()
-	fmt.Println("span_id:", span.Context().SpanID())
 	logger.FromContext(ctx).Info("downstream logic")
 }

@@ -3,11 +3,15 @@ package interceptors_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
+	"net/http"
 	"testing"
 	"time"
 
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
+	"github.com/gin-gonic/gin"
+	"github.com/go-resty/resty/v2"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -15,24 +19,47 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 
 	"github.com/rainbow-me/platform-tools/common/correlation"
+	"github.com/rainbow-me/platform-tools/common/test"
 	"github.com/rainbow-me/platform-tools/grpc/interceptors"
 	pb "github.com/rainbow-me/platform-tools/grpc/protos/gen/go/test"
+	platformHttp "github.com/rainbow-me/platform-tools/http"
+	gininterceptors "github.com/rainbow-me/platform-tools/http/interceptors/gin"
 )
 
 // TODO martin add E2E coverage grpc -> resty client -> gin as well
 
 const bufSize = 1024 * 1024
 
+// Request/Response types for Gin server
+type Ping struct {
+	Message string `json:"message"`
+}
+
 // Mock service implementation for downstream
 type echoServer struct {
 	pb.UnimplementedEchoServiceServer
+	ginServerURL string
+	client       *resty.Client
 }
 
 func (s *echoServer) Echo(ctx context.Context, req *pb.EchoRequest) (*pb.EchoResponse, error) {
-	// Return the message and correlation ID from context for test verification
+	pingReq := Ping{Message: req.GetMessage()}
+	var pingResp Ping
+
+	_, err := s.client.R().
+		SetContext(ctx).
+		SetBody(pingReq).
+		SetResult(&pingResp).
+		Post(s.ginServerURL + "/ping")
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to call gin server: %w", err)
+	}
+
+	// Return the message from Gin response and correlation ID from context for test verification
 	corrID := correlation.ID(ctx)
 	return &pb.EchoResponse{
-		Message:       req.GetMessage(),
+		Message:       pingResp.Message,
 		CorrelationId: corrID,
 	}, nil
 }
@@ -83,10 +110,56 @@ func TestCorrelationPropagationE2E(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
+			var ginCorrelationID string
+
+			// Set up Gin server
+			gin.SetMode(gin.TestMode)
+			r := gin.New()
+			r.Use(gininterceptors.DefaultInterceptors(gininterceptors.WithHttpTrace())...)
+			r.POST("/ping", func(c *gin.Context) {
+				var req Ping
+				if err := c.ShouldBindJSON(&req); err != nil {
+					c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+					return
+				}
+				ginCorrelationID = correlation.ID(c.Request.Context())
+				c.JSON(http.StatusOK, Ping{Message: req.Message})
+			})
+
+			ginServer := &http.Server{
+				Addr:    "127.0.0.1:0",
+				Handler: r,
+			}
+
+			ginListener, err := net.Listen("tcp", ginServer.Addr)
+			require.NoError(t, err, "Failed to create gin listener")
+
+			ginServerURL := fmt.Sprintf("http://%s", ginListener.Addr().String())
+
+			ginServerDone := make(chan error, 1)
+			go func() {
+				ginServerDone <- ginServer.Serve(ginListener)
+			}()
+
+			defer func() {
+				_ = ginServer.Shutdown(ctx)
+				select {
+				case err := <-ginServerDone:
+					if err != nil && !errors.Is(err, http.ErrServerClosed) {
+						t.Logf("Gin server stopped with error: %v", err)
+					}
+				case <-time.After(1 * time.Second):
+					t.Log("Timeout waiting for gin server to stop")
+				}
+			}()
+
 			// Set up in-memory listener for downstream server
 			listener := bufconn.Listen(bufSize)
 			srv := grpc.NewServer(grpc.UnaryInterceptor(interceptors.UnaryCorrelationServerInterceptor))
-			pb.RegisterEchoServiceServer(srv, &echoServer{})
+			pb.RegisterEchoServiceServer(srv, &echoServer{
+				ginServerURL: ginServerURL,
+				client:       platformHttp.NewRestyWithClient(http.DefaultClient, test.NewLogger(t)),
+			})
 			serverDone := make(chan error, 1)
 			go func() {
 				serverDone <- srv.Serve(listener)
@@ -130,7 +203,10 @@ func TestCorrelationPropagationE2E(t *testing.T) {
 				// Check if matches set ID
 				wantID := tt.clientCorrData["correlation_id"]
 				if gotID != wantID {
-					t.Errorf("Expected correlation ID '%s', got '%s'", wantID, gotID)
+					t.Errorf("Expected correlation ID propagated to gRPC '%s', got '%s'", wantID, gotID)
+				}
+				if ginCorrelationID != wantID {
+					t.Errorf("Expected correlation ID propagated to Gin '%s', got '%s'", wantID, ginCorrelationID)
 				}
 			}
 
