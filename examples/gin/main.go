@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -10,6 +12,7 @@ import (
 
 	"github.com/rainbow-me/platform-tools/common/logger"
 	gininterceptors "github.com/rainbow-me/platform-tools/http/interceptors/gin"
+	"github.com/rainbow-me/platform-tools/observability"
 )
 
 func main() {
@@ -26,14 +29,12 @@ func run() error {
 
 	r := gin.New()
 
-	r.Use(gininterceptors.DefaultInterceptors()...)
+	r.Use(gininterceptors.DefaultInterceptors(gininterceptors.WithHttpTrace())...)
 
-	r.GET("/ping", func(c *gin.Context) {
-		span, ok := tracer.SpanFromContext(c.Request.Context())
-		if ok {
-			span.SetTag("custom.tag", "example-value")
-		}
+	r.POST("/ping", func(c *gin.Context) {
 		logger.FromContext(c.Request.Context()).Info("Received ping request")
+
+		downstreamLogic(c.Request.Context())
 
 		c.JSON(http.StatusOK, gin.H{
 			"message": "pong",
@@ -52,4 +53,11 @@ func run() error {
 	})
 
 	return r.Run(":8080")
+}
+
+func downstreamLogic(ctx context.Context) {
+	span, ctx := observability.StartSpan(ctx, "downstream.logic")
+	defer span.Finish()
+	fmt.Println("span_id:", span.Context().SpanID())
+	logger.FromContext(ctx).Info("downstream logic")
 }

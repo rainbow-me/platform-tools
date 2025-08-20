@@ -12,6 +12,7 @@ import (
 	"github.com/rainbow-me/platform-tools/common/headers"
 	"github.com/rainbow-me/platform-tools/common/logger"
 	commonmeta "github.com/rainbow-me/platform-tools/common/metadata"
+	"github.com/rainbow-me/platform-tools/observability"
 )
 
 const (
@@ -79,7 +80,7 @@ func TracingMiddleware() (resty.RequestMiddleware, resty.ResponseMiddleware) {
 			opts = append(opts, tracer.Tag("http.path", parsedURL.Path))
 		}
 
-		span, ctx := tracer.StartSpanFromContext(req.Context(), httpRequestOp, opts...)
+		span, ctx := observability.StartSpan(req.Context(), httpRequestOp, opts...)
 		req.SetContext(ctx)
 
 		// propagate trace through Rainbow custom tracing header

@@ -11,6 +11,7 @@ import (
 	"github.com/rainbow-me/platform-tools/common/logger"
 	"github.com/rainbow-me/platform-tools/common/metadata"
 	"github.com/rainbow-me/platform-tools/http"
+	"github.com/rainbow-me/platform-tools/observability"
 )
 
 func main() {
@@ -32,13 +33,16 @@ func run() error {
 
 	client := http.NewRestyWithClient(gohttp.DefaultClient, l)
 
-	span, ctx := tracer.StartSpanFromContext(context.Background(), "ping.request")
+	span, ctx := observability.StartSpan(context.Background(), "ping.request")
 	ctx = correlation.SetKey(ctx, "my-key", "my-value")
 	ctx = metadata.ContextWithRequestInfo(ctx, metadata.RequestInfo{RequestID: "my-request-id"})
 
 	l = logger.FromContext(ctx) // ensure it contains request info
 	l.Info("Sending ping request", logger.String("trace_id", span.Context().TraceID()))
 
-	_, err = client.R().SetContext(ctx).Get("http://localhost:8080/ping")
+	_, err = client.R().SetContext(ctx).SetBody(struct {
+		Message string `json:"message"`
+	}{Message: "ping"}).
+		Post("http://localhost:8080/ping")
 	return err
 }

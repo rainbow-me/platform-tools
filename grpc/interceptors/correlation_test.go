@@ -19,6 +19,8 @@ import (
 	pb "github.com/rainbow-me/platform-tools/grpc/protos/gen/go/test"
 )
 
+// TODO martin add E2E coverage grpc -> resty client -> gin as well
+
 const bufSize = 1024 * 1024
 
 // Mock service implementation for downstream

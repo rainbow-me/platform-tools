@@ -16,6 +16,8 @@ type interceptorCfg struct {
 	TracingEnabled     bool
 	CorrelationEnabled bool
 	CompressionLevel   int
+	HttpDebug          bool //
+	HttpTrace          bool // set to true as well to print every http request and response to logs
 	Timeout            time.Duration
 }
 
@@ -42,6 +44,21 @@ func WithTracingEnabled(enabled bool) InterceptorOpt {
 	}
 }
 
+// WithHttpDebug enables printing log line with request info and duration for every request
+func WithHttpDebug() InterceptorOpt {
+	return func(cfg *interceptorCfg) {
+		cfg.HttpDebug = true
+	}
+}
+
+// WithHttpTrace enables deeper http debugging by also printing the whole request and response body
+func WithHttpTrace() InterceptorOpt {
+	return func(cfg *interceptorCfg) {
+		cfg.HttpDebug = true
+		cfg.HttpTrace = true
+	}
+}
+
 // WithCompressionLevel specifies the gzip compression level, default is gzip.DefaultCompression.
 // Disable by using gzip.NoCompression.
 func WithCompressionLevel(level int) InterceptorOpt {
@@ -62,6 +79,10 @@ func DefaultInterceptors(opts ...InterceptorOpt) []gin.HandlerFunc {
 		opt(cfg)
 	}
 	middlewares := []gin.HandlerFunc{
+		RequestLogging(loggingCfg{
+			debug: cfg.HttpDebug,
+			trace: cfg.HttpTrace,
+		}),
 		PanicRecoveryMiddleware,
 		ErrorHandlingMiddleware,
 	}
