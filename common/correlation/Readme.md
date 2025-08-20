@@ -76,10 +76,10 @@ ctx = correlation.Merge(ctx, otherCtx)
 
 #### Logging
 
-Convert to Zap fields:
+Convert to log fields:
 
 ```go
-logger.Info("Request processed", correlation.ToZapFields(ctx)...)
+logger.Info("Request processed", correlation.ToLogFields(ctx)...)
 ```
 
 This adds fields like `tenancy: "org1"`, `correlation_id: "uuid123"` to logs.
@@ -159,7 +159,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
     ctx = correlation.SetKey(ctx, "session_id", "abc123")
     
     // Log with correlation fields
-    logger.Info("HTTP request received", correlation.ToZapFields(ctx)...)
+    logger.Info("HTTP request received", correlation.ToLogFields(ctx)...)
     
     // Forward to downstream gRPC (interceptors will propagate via metadata)
     grpcResp, err := downstreamClient.YourMethod(ctx, &pb.YourRequest{ /* from r */ })
@@ -185,7 +185,7 @@ type gatewayService struct {
 
 func (s *gatewayService) YourMethod(ctx context.Context, req *pb.YourRequest) (*pb.YourResponse, error) {
     // Correlation data already set by server interceptor from incoming metadata
-    logger.Info("gRPC request received", correlation.ToZapFields(ctx)...)
+    logger.Info("gRPC request received", correlation.ToLogFields(ctx)...)
     
     // Optionally modify or add data
     ctx = correlation.SetKey(ctx, "gateway_processed", "true")
@@ -208,7 +208,7 @@ Access propagated data:
 
 ```go
 func (s *service) Method(ctx context.Context, req *pb.Req) (*pb.Resp, error) {
-    logger.Info("Handling", correlation.ToZapFields(ctx)...)
+    logger.Info("Handling", correlation.ToLogFields(ctx)...)
     
     userID := correlation.GetValue(ctx, "user_id")
     // Use for logic/auth

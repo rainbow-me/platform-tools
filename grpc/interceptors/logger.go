@@ -124,7 +124,7 @@ func buildBaseLogFields(ctx context.Context, grpcService, grpcMethod string) []l
 	}
 
 	// Add correlation fields and service/method information
-	fields = append(fields, correlation.ToZapFields(ctx)...)
+	fields = append(fields, correlation.ToLogFields(ctx)...)
 	fields = append(fields,
 		logger.String(methodKey, grpcMethod),
 		logger.String(serviceKey, grpcService),

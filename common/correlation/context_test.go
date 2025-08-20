@@ -377,7 +377,7 @@ func TestMerge(t *testing.T) {
 	}
 }
 
-func TestToZapFields(t *testing.T) {
+func TestToLogFields(t *testing.T) {
 	tests := []struct {
 		name string
 		ctx  context.Context
@@ -402,9 +402,9 @@ func TestToZapFields(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := corr.ToZapFields(tt.ctx)
+			got := corr.ToLogFields(tt.ctx)
 			if !zapFieldsEqual(got, tt.want) {
-				t.Errorf("ToZapFields() = %v, want %v", got, tt.want)
+				t.Errorf("ToLogFields() = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -29,7 +29,7 @@ type requestContextKey struct{}
 
 func ContextWithRequestInfo(ctx context.Context, requestInfo RequestInfo) context.Context {
 	ctx = context.WithValue(ctx, requestContextKey{}, requestInfo)
-	return logger.ContextWithFields(ctx, requestInfo.ToZapFields())
+	return logger.ContextWithFields(ctx, requestInfo.ToLogFields())
 }
 
 // GetRequestInfoFromContext extracts RequestInfo from context
@@ -54,7 +54,7 @@ func GetRequestInfoFromContext(ctx context.Context) (RequestInfo, bool) {
 	return requestInfo, true
 }
 
-func (r RequestInfo) ToZapFields() []logger.Field {
+func (r RequestInfo) ToLogFields() []logger.Field {
 	var fields []logger.Field
 	if r.RequestID != "" {
 		fields = append(fields, logger.String("request_id", r.RequestID))

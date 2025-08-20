@@ -78,7 +78,7 @@ func Set(ctx context.Context, values map[string]string) context.Context {
 	}
 
 	ctx = context.WithValue(ctx, Key, correlationMap)
-	return logger.ContextWithFields(ctx, toZapFields(correlationMap))
+	return logger.ContextWithFields(ctx, toLogFields(correlationMap))
 }
 
 // SetKey sets a single correlation key-value pair and returns a new context.
@@ -187,13 +187,13 @@ func Merge(ctx context.Context, otherContexts ...context.Context) context.Contex
 	return Set(ctx, merged)
 }
 
-// ToZapFields converts the correlation context to zap fields for logging.
-func ToZapFields(ctx context.Context) []logger.Field {
-	return toZapFields(Get(ctx))
+// ToLogFields converts the correlation context to zap fields for logging.
+func ToLogFields(ctx context.Context) []logger.Field {
+	return toLogFields(Get(ctx))
 }
 
-// toZapFields converts the correlation context to zap fields for logging.
-func toZapFields(data Data) []logger.Field {
+// toLogFields converts the correlation context to zap fields for logging.
+func toLogFields(data Data) []logger.Field {
 	if len(data) == 0 {
 		return nil
 	}
