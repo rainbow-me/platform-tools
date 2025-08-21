@@ -56,7 +56,8 @@ func RequestLogging(cfg loggingCfg) gin.HandlerFunc {
 		// Inject useful log fields
 		ctx = logger.ContextWithFields(ctx,
 			logger.String("method", c.Request.Method),
-			logger.String("path", c.Request.URL.Path),
+			logger.String("path", c.Request.URL.Path), // eg: /v1/users/123/profile
+			logger.String("route", c.FullPath()),      // eg: /v1/users/:id/profile
 		)
 		c.Request = c.Request.WithContext(ctx)
 
