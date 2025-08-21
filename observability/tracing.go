@@ -12,6 +12,6 @@ import (
 // context logger gets updated with trace and span ID.
 func StartSpan(ctx context.Context, opName string, opts ...tracer.StartSpanOption) (*tracer.Span, context.Context) {
 	span, ctx := tracer.StartSpanFromContext(ctx, opName, opts...)
-	ctx = logger.ContextWithFields(ctx, logger.WithTrace(span.Context()))
+	ctx = logger.ContextWithFields(ctx, logger.WithTrace(span.Context())...)
 	return span, ctx
 }

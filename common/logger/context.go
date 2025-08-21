@@ -35,6 +35,6 @@ func ContextWithLogger(ctx context.Context, logger *Logger) context.Context {
 }
 
 // ContextWithFields returns a context with a logger to which the fields are appended
-func ContextWithFields(ctx context.Context, fields []Field) context.Context {
+func ContextWithFields(ctx context.Context, fields ...Field) context.Context {
 	return ContextWithLogger(ctx, FromContext(ctx).With(fields...))
 }

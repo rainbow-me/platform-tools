@@ -39,7 +39,7 @@ func TracingMiddleware(c *gin.Context) {
 	defer span.Finish()
 
 	// Pass the span through the request context
-	ctx = logger.ContextWithFields(ctx, logger.WithTrace(span.Context()))
+	ctx = logger.ContextWithFields(ctx, logger.WithTrace(span.Context())...)
 	c.Request = c.Request.WithContext(ctx)
 	c.Next()
 

@@ -78,7 +78,7 @@ func Set(ctx context.Context, values map[string]string) context.Context {
 	}
 
 	ctx = context.WithValue(ctx, Key, correlationMap)
-	return logger.ContextWithFields(ctx, toLogFields(correlationMap))
+	return logger.ContextWithFields(ctx, toLogFields(correlationMap)...)
 }
 
 // SetKey sets a single correlation key-value pair and returns a new context.
@@ -108,7 +108,7 @@ func SetKey(ctx context.Context, key, value string) context.Context {
 	}
 
 	ctx = context.WithValue(ctx, Key, newMap)
-	return logger.ContextWithFields(ctx, toLogFields(newMap))
+	return logger.ContextWithFields(ctx, toLogFields(newMap)...)
 }
 
 // Get returns the correlation data from the context.

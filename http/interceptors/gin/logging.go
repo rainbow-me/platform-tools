@@ -54,6 +54,12 @@ func RequestLogging(cfg loggingCfg) gin.HandlerFunc {
 			c.Writer = responseCapture
 		}
 
+		// Inject useful log fields
+		ctx = logger.ContextWithFields(ctx,
+			logger.String("method", c.Request.Method),
+			logger.String("path", c.Request.URL.Path),
+		)
+
 		// Proceed to the next middleware or handler
 		c.Next()
 
