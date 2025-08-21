@@ -30,7 +30,7 @@ func RequestInfoMiddleware(c *gin.Context) {
 	ctx = metadata.ContextWithRequestInfo(ctx, requestInfo)
 
 	if requestInfo.RequestID != "" {
-		observability.SetTag(ctx, "request_id", requestInfo.RequestID)
+		observability.SetTag(ctx, observability.KeyRequestID, requestInfo.RequestID)
 	}
 
 	c.Request = c.Request.WithContext(ctx)

@@ -27,7 +27,7 @@ func RequestContextUnaryServerInterceptor() grpc.UnaryServerInterceptor {
 		updatedCtx, requestInfo := parser.ParseMetadata(ctx)
 
 		if requestInfo.RequestID != "" {
-			observability.SetTag(ctx, "request_id", requestInfo.RequestID)
+			observability.SetTag(ctx, observability.KeyRequestID, requestInfo.RequestID)
 		}
 
 		// Add to context for handlers using custom context key type

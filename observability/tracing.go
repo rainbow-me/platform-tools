@@ -8,6 +8,10 @@ import (
 	"github.com/rainbow-me/platform-tools/common/logger"
 )
 
+const (
+	KeyRequestID = "request_id"
+)
+
 // StartSpan is a helper function that we should always use instead of tracer.StartSpanFromContext to ensure that our
 // context logger gets updated with trace and span ID.
 func StartSpan(ctx context.Context, opName string, opts ...tracer.StartSpanOption) (*tracer.Span, context.Context) {
