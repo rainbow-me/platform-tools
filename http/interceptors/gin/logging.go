@@ -39,7 +39,6 @@ func RequestLogging(cfg loggingCfg) gin.HandlerFunc {
 				c.Request.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 			}
 		}
-		c.Request = c.Request.WithContext(ctx)
 
 		// Record start time for duration calculation
 		start := time.Now()
@@ -59,6 +58,7 @@ func RequestLogging(cfg loggingCfg) gin.HandlerFunc {
 			logger.String("method", c.Request.Method),
 			logger.String("path", c.Request.URL.Path),
 		)
+		c.Request = c.Request.WithContext(ctx)
 
 		// Proceed to the next middleware or handler
 		c.Next()
