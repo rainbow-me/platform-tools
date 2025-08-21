@@ -15,3 +15,17 @@ func StartSpan(ctx context.Context, opName string, opts ...tracer.StartSpanOptio
 	ctx = logger.ContextWithFields(ctx, logger.WithTrace(span.Context())...)
 	return span, ctx
 }
+
+func SetTag(ctx context.Context, key string, value any) {
+	span, ok := tracer.SpanFromContext(ctx)
+	if ok && span != nil {
+		span.SetTag(key, value)
+	}
+}
+
+func SetBaggageItem(ctx context.Context, key string, value string) {
+	span, ok := tracer.SpanFromContext(ctx)
+	if ok && span != nil {
+		span.SetBaggageItem(key, value)
+	}
+}

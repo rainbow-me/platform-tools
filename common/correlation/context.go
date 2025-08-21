@@ -21,7 +21,7 @@ const (
 )
 
 // ContextCorrelationHeader HTTP/gRPC header name for correlation context
-const ContextCorrelationHeader = headers.HeaderXCorrelationID
+const ContextCorrelationHeader = headers.HeaderXCorrelationData
 
 // correlationContextKey is a private type for context keys to avoid collisions
 type correlationContextKey struct{}
