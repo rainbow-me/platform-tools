@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
-	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
 	"github.com/rainbow-me/platform-tools/common/logger"
@@ -214,7 +213,7 @@ func NewServer(opts ...Option) (*Server, error) {
 
 	for _, opt := range opts {
 		if err = opt(s); err != nil {
-			s.logger.Error("Failed to apply server option", zap.Error(err))
+			s.logger.Error("Failed to apply server option", logger.Error(err))
 			return nil, err
 		}
 	}
@@ -256,12 +255,12 @@ func NewServer(opts ...Option) (*Server, error) {
 	}
 
 	s.logger.Info("Server created successfully",
-		zap.Duration("shutdown_timeout", s.shutdownTimeout),
-		zap.Bool("signal_handling", s.signalHandling),
-		zap.Bool("automatic_stop", s.isAutomaticStop),
-		zap.Int("http_server_count", len(s.httpConfigs)),
-		zap.Int("grpc_server_count", len(s.grpcConfigs)),
-		zap.Int("shutdown_hooks", len(s.shutdownHooks)),
+		logger.Duration("shutdown_timeout", s.shutdownTimeout),
+		logger.Bool("signal_handling", s.signalHandling),
+		logger.Bool("automatic_stop", s.isAutomaticStop),
+		logger.Int("http_server_count", len(s.httpConfigs)),
+		logger.Int("grpc_server_count", len(s.grpcConfigs)),
+		logger.Int("shutdown_hooks", len(s.shutdownHooks)),
 	)
 
 	return s, nil
@@ -292,13 +291,13 @@ func (s *Server) Serve() error {
 	var errs []error
 	select {
 	case sig := <-s.signalChan:
-		s.logger.Info("Received shutdown signal", zap.String("signal", sig.String()))
+		s.logger.Info("Received shutdown signal", logger.String("signal", sig.String()))
 	case err := <-s.errChan:
 		errs = append(errs, err)
 		for len(s.errChan) > 0 {
 			errs = append(errs, <-s.errChan)
 		}
-		s.logger.Warn("Server error received", zap.Error(err))
+		s.logger.Warn("Server error received", logger.Error(err))
 	case <-s.shutdownCtx.Done():
 		s.logger.Info("Shutdown context cancelled")
 	}
@@ -325,7 +324,7 @@ func (s *Server) setupSignalHandling() {
 
 	go func() {
 		for sig := range s.signalChan {
-			s.logger.Info("Received signal", zap.String("signal", sig.String()))
+			s.logger.Info("Received signal", logger.String("signal", sig.String()))
 			s.shutdownCancel()
 			break // Handle first signal only
 		}
@@ -353,26 +352,26 @@ func (s *Server) startHTTPServer(config HTTPConfig) {
 		s.httpServers[config.Name] = server
 		s.serverMu.Unlock()
 
-		s.logger.Info("Starting HTTP server", zap.String("name", config.Name), zap.String("address", config.Address))
+		s.logger.Info("Starting HTTP server", logger.String("name", config.Name), logger.String("address", config.Address))
 
 		lis, err := net.Listen("tcp", config.Address)
 		if err != nil {
-			s.logger.Error("Failed to listen", zap.String("name", config.Name), zap.Error(err))
+			s.logger.Error("Failed to listen", logger.String("name", config.Name), logger.Error(err))
 			s.errChan <- fmt.Errorf("HTTP server %s listen error: %w", config.Name, err)
 			return
 		}
 
 		err = server.Serve(lis)
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			s.logger.Error("HTTP server error", zap.String("name", config.Name), zap.Error(err))
+			s.logger.Error("HTTP server error", logger.String("name", config.Name), logger.Error(err))
 			s.errChan <- fmt.Errorf("HTTP server %s error: %w", config.Name, err)
 		} else {
-			s.logger.Info("HTTP server stopped", zap.String("name", config.Name))
+			s.logger.Info("HTTP server stopped", logger.String("name", config.Name))
 		}
 
 		// Close listener
 		if cerr := lis.Close(); cerr != nil && !errors.Is(cerr, net.ErrClosed) {
-			s.logger.Warn("Error closing listener", zap.String("name", config.Name), zap.Error(cerr))
+			s.logger.Warn("Error closing listener", logger.String("name", config.Name), logger.Error(cerr))
 		}
 	}()
 }
@@ -397,30 +396,30 @@ func (s *Server) startGRPCServer(config GRPCConfig) {
 
 		// Register services if setup func provided
 		if config.SetupFunc != nil {
-			s.logger.Debug("Setting up gRPC services", zap.String("name", config.Name))
+			s.logger.Debug("Setting up gRPC services", logger.String("name", config.Name))
 			config.SetupFunc(server)
 		}
 
-		s.logger.Info("Starting gRPC server", zap.String("name", config.Name), zap.String("address", config.Address))
+		s.logger.Info("Starting gRPC server", logger.String("name", config.Name), logger.String("address", config.Address))
 
 		lis, err := net.Listen("tcp", config.Address)
 		if err != nil {
-			s.logger.Error("Failed to listen", zap.String("name", config.Name), zap.Error(err))
+			s.logger.Error("Failed to listen", logger.String("name", config.Name), logger.Error(err))
 			s.errChan <- fmt.Errorf("gRPC server %s listen error: %w", config.Name, err)
 			return
 		}
 
 		err = server.Serve(lis)
 		if err != nil && !errors.Is(err, grpc.ErrServerStopped) {
-			s.logger.Error("gRPC server error", zap.String("name", config.Name), zap.Error(err))
+			s.logger.Error("gRPC server error", logger.String("name", config.Name), logger.Error(err))
 			s.errChan <- fmt.Errorf("gRPC server %s error: %w", config.Name, err)
 		} else {
-			s.logger.Info("gRPC server stopped", zap.String("name", config.Name))
+			s.logger.Info("gRPC server stopped", logger.String("name", config.Name))
 		}
 
 		// Close listener
 		if cerr := lis.Close(); cerr != nil && !errors.Is(cerr, net.ErrClosed) {
-			s.logger.Warn("Error closing listener", zap.String("name", config.Name), zap.Error(cerr))
+			s.logger.Warn("Error closing listener", logger.String("name", config.Name), logger.Error(cerr))
 		}
 	}()
 }
@@ -434,7 +433,7 @@ func (s *Server) Stop() error {
 
 // GracefulShutdown performs a graceful shutdown with the configured timeout
 func (s *Server) GracefulShutdown(ctx context.Context) error {
-	s.logger.Info("Starting graceful shutdown", zap.Duration("timeout", s.shutdownTimeout))
+	s.logger.Info("Starting graceful shutdown", logger.Duration("timeout", s.shutdownTimeout))
 
 	s.shutdownCancel()
 
@@ -455,7 +454,7 @@ func (s *Server) shutdown(ctx context.Context, isGraceful bool) error { //nolint
 		if isGraceful {
 			shutdownType = "graceful"
 		}
-		s.logger.Info("Shutting down servers", zap.String("type", shutdownType))
+		s.logger.Info("Shutting down servers", logger.String("type", shutdownType))
 
 		// Shutdown HTTP servers
 		s.serverMu.RLock()
@@ -542,7 +541,7 @@ func (s *Server) ExecuteShutdownHooks(ctx context.Context) error {
 		return nil
 	}
 
-	s.logger.Info("Executing shutdown hooks", zap.Int("count", len(s.shutdownHooks)))
+	s.logger.Info("Executing shutdown hooks", logger.Int("count", len(s.shutdownHooks)))
 
 	sort.Sort(s.shutdownHooks)
 
@@ -557,7 +556,7 @@ func (s *Server) ExecuteShutdownHooks(ctx context.Context) error {
 			hookCtx, cancel := context.WithTimeout(ctx, h.Timeout)
 			defer cancel()
 
-			s.logger.Info("Executing hook", zap.String("name", h.Name), zap.Int("priority", h.Priority))
+			s.logger.Info("Executing hook", logger.String("name", h.Name), logger.Int("priority", h.Priority))
 
 			start := time.Now()
 			err := h.Hook(hookCtx)
@@ -567,7 +566,7 @@ func (s *Server) ExecuteShutdownHooks(ctx context.Context) error {
 					mu.Lock()
 					hookErrs = append(hookErrs, fmt.Errorf("hook %s timed out", h.Name))
 					mu.Unlock()
-					s.logger.Error("Hook timed out", zap.String("name", h.Name))
+					s.logger.Error("Hook timed out", logger.String("name", h.Name))
 					return // Exit the goroutine early on timeout
 				}
 			default:
@@ -575,9 +574,9 @@ func (s *Server) ExecuteShutdownHooks(ctx context.Context) error {
 					mu.Lock()
 					hookErrs = append(hookErrs, err)
 					mu.Unlock()
-					s.logger.Error("Hook failed", zap.String("name", h.Name), zap.Error(err))
+					s.logger.Error("Hook failed", logger.String("name", h.Name), logger.Error(err))
 				} else {
-					s.logger.Info("Hook completed", zap.String("name", h.Name), zap.Duration("duration", time.Since(start)))
+					s.logger.Info("Hook completed", logger.String("name", h.Name), logger.Duration("duration", time.Since(start)))
 				}
 			}
 		}(hook)
@@ -596,7 +595,7 @@ func (s *Server) ExecuteShutdownHooks(ctx context.Context) error {
 	}
 
 	if len(hookErrs) > 0 {
-		s.logger.Error("Some shutdown hooks failed", zap.Error(errors.Join(hookErrs...)))
+		s.logger.Error("Some shutdown hooks failed", logger.Error(errors.Join(hookErrs...)))
 		return errors.Join(hookErrs...)
 	}
 

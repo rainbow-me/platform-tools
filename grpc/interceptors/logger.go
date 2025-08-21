@@ -9,7 +9,6 @@ import (
 
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"github.com/mennanov/fmutils"
-	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -17,9 +16,9 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
+	"github.com/rainbow-me/platform-tools/common/correlation"
+	"github.com/rainbow-me/platform-tools/common/headers"
 	"github.com/rainbow-me/platform-tools/common/logger"
-	internalmetadata "github.com/rainbow-me/platform-tools/common/metadata"
-	"github.com/rainbow-me/platform-tools/grpc/correlation"
 	"github.com/rainbow-me/platform-tools/grpc/errors"
 )
 
@@ -43,7 +42,7 @@ const (
 	responseKey = "response"
 
 	// Client identification header
-	clientTaggingHeader = internalmetadata.HeaderClientTaggingHeader
+	clientTaggingHeader = headers.HeaderClientTaggingHeader
 )
 
 // Pre-compile regex for performance - avoid recompiling on each request
@@ -58,16 +57,16 @@ func logWithContext(
 	fullMethod string,
 	config *LoggingInterceptorConfig,
 	log *logger.Logger,
-	req interface{},
-	handler func(ctx context.Context) (interface{}, error),
-) (interface{}, error) {
+	req any,
+	handler func(ctx context.Context) (any, error),
+) (any, error) {
 	// Skip logging if method is in the skip list
 	if _, shouldSkip := config.skipLoggingByMethod[fullMethod]; shouldSkip {
 		return handler(ctx)
 	}
 
 	// Disable stack traces for all levels since interceptor stacks are not useful
-	log = log.WithOptions(zap.AddStacktrace(zap.ErrorLevel + 1))
+	log = log.WithOptions(logger.AddStackTrace(logger.ErrorLevel + 1))
 
 	// Extract service and method names from the full gRPC method path
 	grpcService, grpcMethod := GetServiceAndMethod(fullMethod)
@@ -125,10 +124,10 @@ func buildBaseLogFields(ctx context.Context, grpcService, grpcMethod string) []l
 	}
 
 	// Add correlation fields and service/method information
-	fields = append(fields, correlation.ToZapFields(ctx)...)
+	fields = append(fields, correlation.ToLogFields(ctx)...)
 	fields = append(fields,
-		zap.String(methodKey, grpcMethod),
-		zap.String(serviceKey, grpcService),
+		logger.String(methodKey, grpcMethod),
+		logger.String(serviceKey, grpcService),
 	)
 
 	md, ok := metadata.FromIncomingContext(ctx)
@@ -136,11 +135,11 @@ func buildBaseLogFields(ctx context.Context, grpcService, grpcMethod string) []l
 		return fields
 	}
 
-	requestID := md.Get(internalmetadata.HeaderXRequestID)
+	requestID := md.Get(headers.HeaderXRequestID)
 	if len(requestID) > 0 {
-		fields = append(fields, zap.String(requestIDKey, requestID[0]))
+		fields = append(fields, logger.String(requestIDKey, requestID[0]))
 	} else {
-		fields = append(fields, zap.String(requestIDKey, "unknown"))
+		fields = append(fields, logger.String(requestIDKey, "unknown"))
 	}
 
 	return fields
@@ -149,7 +148,7 @@ func buildBaseLogFields(ctx context.Context, grpcService, grpcMethod string) []l
 // buildRequestLogFields creates log fields for request/response data and timing
 func buildRequestLogFields(
 	config *LoggingInterceptorConfig,
-	req, resp interface{},
+	req, resp any,
 	duration time.Duration,
 ) []logger.Field {
 	var fields []logger.Field
@@ -160,7 +159,7 @@ func buildRequestLogFields(
 	}
 
 	// Always add execution duration
-	fields = append(fields, zap.Duration(durationIDKey, duration))
+	fields = append(fields, logger.Duration(durationIDKey, duration))
 
 	// Add response payload if logging is enabled and response is not nil
 	if (config.LogParams || config.LogResponses) && resp != nil && !reflect.ValueOf(resp).IsZero() {
@@ -191,18 +190,18 @@ func buildStatusLogFields(config *LoggingInterceptorConfig, err error) []logger.
 
 	statusValue := status.Convert(err)
 	fields = append(fields,
-		zap.String(grpcStatusKey, statusValue.Code().String()),
-		zap.String(grpcMessageKey, statusValue.Message()),
+		logger.String(grpcStatusKey, statusValue.Code().String()),
+		logger.String(grpcMessageKey, statusValue.Message()),
 	)
 
 	if config.LogErrorDetails {
 		backendErr, _ := errors.ParseBackendServiceError(err)
 		logDetails := statusValue.Details()
 		if backendErr != nil {
-			logDetails = []interface{}{backendErr}
+			logDetails = []any{backendErr}
 		}
 		fields = append(fields,
-			zap.Array(grpcErrDetailsKey, zapcore.ArrayMarshalerFunc(func(arr zapcore.ArrayEncoder) error {
+			logger.Array(grpcErrDetailsKey, zapcore.ArrayMarshalerFunc(func(arr zapcore.ArrayEncoder) error {
 				for _, d := range logDetails {
 					if pb, ok := d.(proto.Message); ok {
 						clonedMsg := proto.Clone(pb)
@@ -233,21 +232,21 @@ func buildMetadataLogFields(ctx context.Context) []logger.Field {
 	// Extract client ID from metadata
 	clientIDs := md.Get(clientTaggingHeader)
 	if len(clientIDs) > 0 {
-		fields = append(fields, zap.String(clientIDKey, clientIDs[0]))
+		fields = append(fields, logger.String(clientIDKey, clientIDs[0]))
 	} else {
-		fields = append(fields, zap.String(clientIDKey, "unknown"))
+		fields = append(fields, logger.String(clientIDKey, "unknown"))
 	}
 
 	// Check if this is a new trace (no incoming trace ID)
 	traceIDs := md.Get(tracer.DefaultTraceIDHeader)
-	fields = append(fields, zap.Bool(isNewTraceKey, len(traceIDs) == 0))
+	fields = append(fields, logger.Bool(isNewTraceKey, len(traceIDs) == 0))
 
 	return fields
 }
 
 // GrpcMessageField creates a zap field for gRPC messages with optional field masking.
 // It clones the message to avoid modifying the original and applies any configured masks.
-func GrpcMessageField(key string, message interface{}, masks []fieldmaskpb.FieldMask) logger.Field {
+func GrpcMessageField(key string, message any, masks []fieldmaskpb.FieldMask) logger.Field {
 	msg, ok := message.(proto.Message)
 	if !ok {
 		return PbField(key, message)
@@ -294,13 +293,13 @@ func GetServiceAndMethod(fullMethod string) (string, string) {
 
 // PbField wraps a protobuf message in a zap Field for structured logging.
 // Use this to embed protobuf messages in your structured zap logs.
-func PbField(key string, pb interface{}) logger.Field {
+func PbField(key string, pb any) logger.Field {
 	if pbMsg, ok := pb.(proto.Message); ok {
-		return zap.Object(key, &pbZapField{pbMsg})
+		return logger.Object(key, &pbZapField{pbMsg})
 	}
 
 	// Fallback for non-protobuf messages
-	return zap.Any(key, pb)
+	return logger.Any(key, pb)
 }
 
 // pbZapField is a wrapper that implements zapcore.ObjectMarshaler

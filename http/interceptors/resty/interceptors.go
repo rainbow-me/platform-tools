@@ -8,8 +8,11 @@ import (
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"github.com/go-resty/resty/v2"
 
+	"github.com/rainbow-me/platform-tools/common/correlation"
+	"github.com/rainbow-me/platform-tools/common/headers"
 	"github.com/rainbow-me/platform-tools/common/logger"
-	"github.com/rainbow-me/platform-tools/common/metadata"
+	commonmeta "github.com/rainbow-me/platform-tools/common/metadata"
+	"github.com/rainbow-me/platform-tools/observability"
 )
 
 const (
@@ -56,6 +59,7 @@ func InjectInterceptors(client *resty.Client, opts ...InterceptorOpt) {
 	}
 	if cfg.CorrelationEnabled {
 		client.OnBeforeRequest(CorrelationMiddleware())
+		client.OnBeforeRequest(RequestInfoMiddleware())
 	}
 }
 
@@ -76,11 +80,11 @@ func TracingMiddleware() (resty.RequestMiddleware, resty.ResponseMiddleware) {
 			opts = append(opts, tracer.Tag("http.path", parsedURL.Path))
 		}
 
-		span, ctx := tracer.StartSpanFromContext(req.Context(), httpRequestOp, opts...)
+		span, ctx := observability.StartSpan(req.Context(), httpRequestOp, opts...)
 		req.SetContext(ctx)
 
 		// propagate trace through Rainbow custom tracing header
-		req.SetHeader(metadata.HeaderXTraceID, span.Context().TraceID())
+		req.SetHeader(headers.HeaderXTraceID, span.Context().TraceID())
 
 		// also propagate through DataDog's standard headers
 		if err := tracer.Inject(span.Context(), tracer.HTTPHeadersCarrier(req.Header)); err != nil {
@@ -111,8 +115,23 @@ func TracingMiddleware() (resty.RequestMiddleware, resty.ResponseMiddleware) {
 }
 
 func CorrelationMiddleware() resty.RequestMiddleware {
-	return func(_ *resty.Client, _ *resty.Request) error {
-		// TODO implement
+	return func(_ *resty.Client, req *resty.Request) error {
+		if !correlation.IsEmpty(req.Context()) {
+			header := correlation.Generate(req.Context())
+			req.SetHeader(correlation.ContextCorrelationHeader, header)
+		}
+		return nil
+	}
+}
+
+func RequestInfoMiddleware() resty.RequestMiddleware {
+	return func(_ *resty.Client, req *resty.Request) error {
+		reqInfo, found := commonmeta.GetRequestInfoFromContext(req.Context())
+		if found {
+			if reqInfo.RequestID != "" {
+				req.SetHeader(headers.HeaderXRequestID, reqInfo.RequestID)
+			}
+		}
 		return nil
 	}
 }

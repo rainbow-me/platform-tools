@@ -8,20 +8,25 @@ import (
 
 type loggerKey struct{}
 
-// FromContext extracts a logger from the context or instantiates a new one if none found
+// FromContext extracts a logger from the context or instantiates a new one if none found, and adds custom fields
+// for tracing.
 func FromContext(ctx context.Context) *Logger {
 	if logger, ok := ctx.Value(loggerKey{}).(*Logger); ok {
 		return logger
 	}
+
+	// no logger in context, let's grab the global logger
 	log, err := Instance()
 	if err != nil {
+		// in the unlikely event that the global logger failed to start, try creating a production logger
 		z, zErr := zap.NewProduction()
 		if zErr != nil {
+			// if this fails as well, just use a no-op
 			z = zap.NewNop()
 		}
-		return NewLogger(z)
+		log = NewLogger(z)
 	}
-	return log
+	return log.With()
 }
 
 // ContextWithLogger returns a context with the logger stored for later retrieval via FromContext

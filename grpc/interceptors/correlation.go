@@ -3,11 +3,11 @@ package interceptors
 import (
 	"context"
 
-	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
-	"github.com/rainbow-me/platform-tools/grpc/correlation"
+	"github.com/rainbow-me/platform-tools/common/correlation"
+	meta "github.com/rainbow-me/platform-tools/grpc/metadata"
 )
 
 // UnaryCorrelationServerInterceptor returns a gRPC unary server interceptor that manages correlation data.
@@ -26,19 +26,17 @@ func UnaryCorrelationServerInterceptor(
 	_ *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
 ) (interface{}, error) {
+	ctx = correlation.ContextWithCorrelation(ctx, getCorrelationFromMD(ctx))
+	return handler(ctx, req)
+}
+
+func getCorrelationFromMD(ctx context.Context) string {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if ok {
 		// Extract and parse correlation-context header
-		headerVal := correlation.GetFirst(md, correlation.ContextCorrelationHeader)
-		if headerVal != "" {
-			ctx = correlation.Set(ctx, correlation.ParseCorrelationHeader(headerVal))
-		}
+		return meta.GetFirst(md, correlation.ContextCorrelationHeader)
 	}
-	// Generate correlation_id if missing
-	if !correlation.Has(ctx, correlation.IDKey) {
-		ctx = correlation.SetID(ctx, uuid.NewString())
-	}
-	return handler(ctx, req)
+	return ""
 }
 
 // UnaryCorrelationClientInterceptor returns a gRPC unary client interceptor that propagates correlation data.

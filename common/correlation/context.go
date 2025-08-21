@@ -2,14 +2,15 @@ package correlation
 
 import (
 	"context"
+	"encoding/json"
 	"maps"
-	"strings"
 
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
-	"google.golang.org/grpc/metadata"
 
-	internalmetadata "github.com/rainbow-me/platform-tools/common/metadata"
+	"github.com/rainbow-me/platform-tools/common/headers"
+	"github.com/rainbow-me/platform-tools/common/logger"
 )
 
 // Standard correlation keys
@@ -20,7 +21,7 @@ const (
 )
 
 // ContextCorrelationHeader HTTP/gRPC header name for correlation context
-const ContextCorrelationHeader = internalmetadata.HeaderXCorrelationID
+const ContextCorrelationHeader = headers.HeaderXCorrelationID
 
 // correlationContextKey is a private type for context keys to avoid collisions
 type correlationContextKey struct{}
@@ -30,6 +31,22 @@ var Key = correlationContextKey{}
 
 // Data CorrelationData represents the correlation context data
 type Data map[string]string
+
+func ContextWithCorrelation(ctx context.Context, val string) context.Context {
+	if val != "" {
+		correlationData, err := ParseCorrelationHeader(val)
+		if err != nil {
+			logger.FromContext(ctx).Warn("failed to parse correlation header", zap.Error(err))
+		} else {
+			ctx = Set(ctx, correlationData)
+		}
+	}
+	// Generate correlation_id if missing
+	if !Has(ctx, IDKey) {
+		ctx = SetID(ctx, uuid.NewString())
+	}
+	return ctx
+}
 
 // Set adds correlation values to a context, returning a new context.
 // - Derives new context; doesn't modify input context or values map.
@@ -60,7 +77,8 @@ func Set(ctx context.Context, values map[string]string) context.Context {
 		}
 	}
 
-	return context.WithValue(ctx, Key, correlationMap)
+	ctx = context.WithValue(ctx, Key, correlationMap)
+	return logger.ContextWithFields(ctx, toLogFields(correlationMap))
 }
 
 // SetKey sets a single correlation key-value pair and returns a new context.
@@ -89,7 +107,8 @@ func SetKey(ctx context.Context, key, value string) context.Context {
 		span.SetBaggageItem(key, value)
 	}
 
-	return context.WithValue(ctx, Key, newMap)
+	ctx = context.WithValue(ctx, Key, newMap)
+	return logger.ContextWithFields(ctx, toLogFields(newMap))
 }
 
 // Get returns the correlation data from the context.
@@ -169,17 +188,21 @@ func Merge(ctx context.Context, otherContexts ...context.Context) context.Contex
 	return Set(ctx, merged)
 }
 
-// ToZapFields converts the correlation context to zap fields for logging.
-func ToZapFields(ctx context.Context) []zap.Field {
-	data := Get(ctx)
+// ToLogFields converts the correlation context to zap fields for logging.
+func ToLogFields(ctx context.Context) []logger.Field {
+	return toLogFields(Get(ctx))
+}
+
+// toLogFields converts the correlation context to zap fields for logging.
+func toLogFields(data Data) []logger.Field {
 	if len(data) == 0 {
 		return nil
 	}
 
-	fields := make([]zap.Field, 0, len(data))
+	fields := make([]logger.Field, 0, len(data))
 	for key, value := range data {
 		if value != "" {
-			fields = append(fields, zap.String(key, value))
+			fields = append(fields, logger.String(key, value))
 		}
 	}
 
@@ -252,14 +275,10 @@ func IsEmpty(ctx context.Context) bool {
 func String(ctx context.Context) string {
 	data := Get(ctx)
 	if len(data) == 0 {
-		return ""
+		return "{}"
 	}
-
-	pairs := make([]string, 0, len(data))
-	for k, v := range data {
-		pairs = append(pairs, k+"="+v)
-	}
-	return strings.Join(pairs, ",")
+	j, _ := json.Marshal(data)
+	return string(j)
 }
 
 // Generate creates the correlation header string from the context.
@@ -268,27 +287,8 @@ func Generate(ctx context.Context) string {
 }
 
 // ParseCorrelationHeader parses the correlation header string into a Data map.
-func ParseCorrelationHeader(headerVal string) Data {
-	pairs := strings.Split(headerVal, ",")
-	m := make(Data)
-	for _, pair := range pairs {
-		parts := strings.SplitN(pair, "=", 2)
-		if len(parts) == 2 {
-			k := strings.TrimSpace(parts[0])
-			v := strings.TrimSpace(parts[1])
-			if k != "" && v != "" {
-				m[k] = v
-			}
-		}
-	}
-	return m
-}
-
-// GetFirst returns the first value for a metadata key, or an empty string if not present.
-func GetFirst(md metadata.MD, key string) string {
-	val := md.Get(key)
-	if len(val) > 0 {
-		return val[0]
-	}
-	return ""
+func ParseCorrelationHeader(headerVal string) (Data, error) {
+	var data Data
+	err := json.Unmarshal([]byte(headerVal), &data)
+	return data, err
 }

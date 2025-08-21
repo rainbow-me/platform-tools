@@ -8,78 +8,66 @@ import (
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"github.com/google/uuid"
 	"google.golang.org/grpc/metadata"
+
+	"github.com/rainbow-me/platform-tools/common/headers"
+	commonmeta "github.com/rainbow-me/platform-tools/common/metadata"
 )
 
-// RequestInfo contains extracted information from gRPC metadata
-type RequestInfo struct {
-	RequestTime string `json:"requestTime"`
-
-	// Request Identification
-	RequestID     string `json:"requestId"`
-	CorrelationID string `json:"correlationId"`
-	TraceID       string `json:"traceId"`
-
-	// Authentication
-	HasAuth   bool   `json:"hasAuth"`
-	AuthType  string `json:"authType,omitempty"`  // e.g., Bearer, Basic, Digest, ApiKey
-	AuthToken string `json:"authToken,omitempty"` // Masked if sensitive
-
-	// Raw headers for debugging
-	AllHeaders map[string]string `json:"allHeaders,omitempty"`
+// Parser extracts commonmeta.RequestInfo from gRPC metadata
+type Parser struct {
+	opt RequestParserOpt
 }
 
-// Parser extracts RequestInfo from gRPC metadata
-type Parser struct {
-	includeAllHeaders bool
-	maskSensitive     bool
+type RequestParserOpt struct {
+	IncludeAllHeaders bool
+	MaskSensitive     bool
 }
 
 // NewRequestParser creates a new metadata parser
-func NewRequestParser(includeAllHeaders, maskSensitive bool) *Parser {
+func NewRequestParser(opt RequestParserOpt) *Parser {
 	return &Parser{
-		includeAllHeaders: includeAllHeaders,
-		maskSensitive:     maskSensitive,
+		opt: opt,
 	}
 }
 
-// ParseMetadata extracts RequestInfo from gRPC metadata and ensures
+// ParseMetadata extracts commonmeta.RequestInfo from metadata and ensures
 // that essential request identifiers are always present by generating
 // them ONLY when not provided by the client. If a request ID is generated,
-// it is added to the gRPC metadata for downstream propagation.
+// it is added to the metadata for downstream propagation.
 //
 // This function:
 // - Extracts request/correlation/trace IDs from metadata
 // - Generates a request ID ONLY if none is present in headers
-// - Adds generated request ID to gRPC metadata for propagation (only if generated)
+// - Adds generated request ID to metadata for propagation (only if generated)
 // - Extracts authentication information
 // - Optionally includes all headers based on configuration
 //
 // Parameters:
-//   - ctx: gRPC context containing metadata
+//   - ctx: context containing metadata
 //
 // Returns:
 //   - context.Context: Updated context with request ID in metadata (only if request ID was generated)
-//   - *RequestInfo: Populated request information with guaranteed request ID
-func (p *Parser) ParseMetadata(ctx context.Context) (context.Context, *RequestInfo) {
+//   - *commonmeta.RequestInfo: Populated request information with guaranteed request ID
+func (p *Parser) ParseMetadata(ctx context.Context) (context.Context, *commonmeta.RequestInfo) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		// No metadata present, create new metadata with generated request ID
 		requestID := p.generateRequestID()
-		info := &RequestInfo{
+		info := &commonmeta.RequestInfo{
 			RequestTime: time.Now().Format(time.RFC3339),
 			RequestID:   requestID,
 		}
 
 		// Create new metadata with the generated request ID
 		newMD := metadata.New(map[string]string{
-			HeaderXRequestID: requestID,
+			headers.HeaderXRequestID: requestID,
 		})
 		updatedCtx := metadata.NewIncomingContext(ctx, newMD)
 
 		return updatedCtx, info
 	}
 
-	info := &RequestInfo{
+	info := &commonmeta.RequestInfo{
 		RequestTime: time.Now().Format(time.RFC3339),
 	}
 
@@ -88,7 +76,7 @@ func (p *Parser) ParseMetadata(ctx context.Context) (context.Context, *RequestIn
 	p.extractAuthentication(md, info)
 
 	// Include all headers if requested
-	if p.includeAllHeaders {
+	if p.opt.IncludeAllHeaders {
 		p.extractAllHeaders(md, info)
 	}
 
@@ -106,11 +94,11 @@ func (p *Parser) ParseMetadata(ctx context.Context) (context.Context, *RequestIn
 func (p *Parser) extractRequestIDs(
 	ctx context.Context,
 	md metadata.MD,
-	info *RequestInfo,
+	info *commonmeta.RequestInfo,
 ) (context.Context, bool) {
 	// Check common request ID headers
 	requestIDHeaders := []string{
-		HeaderXRequestID,
+		headers.HeaderXRequestID,
 	}
 
 	// Try to extract request ID from headers
@@ -140,7 +128,7 @@ func (p *Parser) extractRequestIDs(
 
 	// Check correlation ID headers
 	correlationHeaders := []string{
-		HeaderXCorrelationID,
+		headers.HeaderXCorrelationID,
 	}
 
 	for _, header := range correlationHeaders {
@@ -170,7 +158,7 @@ func (p *Parser) addRequestIDToMetadata(
 	newMD := existingMD.Copy()
 
 	// Add the request ID to the metadata
-	newMD.Set(HeaderXRequestID, requestID)
+	newMD.Set(headers.HeaderXRequestID, requestID)
 
 	// Create a new context with the updated metadata
 	return metadata.NewIncomingContext(ctx, newMD)
@@ -186,13 +174,13 @@ func (p *Parser) generateRequestID() string {
 }
 
 // extractAuthentication extracts authentication information
-func (p *Parser) extractAuthentication(md metadata.MD, info *RequestInfo) {
+func (p *Parser) extractAuthentication(md metadata.MD, info *commonmeta.RequestInfo) {
 	// Authorization header
-	if authHeader := p.getFirstValue(md, HeaderAuthorization); authHeader != "" {
+	if authHeader := p.getFirstValue(md, headers.HeaderAuthorization); authHeader != "" {
 		info.HasAuth = true
 		info.AuthType = p.extractAuthType(authHeader)
 
-		if !p.maskSensitive {
+		if !p.opt.MaskSensitive {
 			info.AuthToken = authHeader
 		} else {
 			info.AuthToken = p.maskToken(authHeader)
@@ -201,13 +189,13 @@ func (p *Parser) extractAuthentication(md metadata.MD, info *RequestInfo) {
 }
 
 // extractAllHeaders extracts all headers for debugging
-func (p *Parser) extractAllHeaders(md metadata.MD, info *RequestInfo) {
+func (p *Parser) extractAllHeaders(md metadata.MD, info *commonmeta.RequestInfo) {
 	info.AllHeaders = make(map[string]string)
 
 	for key, values := range md {
 		if len(values) > 0 {
 			// Mask sensitive headers
-			if p.maskSensitive && p.isSensitiveHeader(key) {
+			if p.opt.MaskSensitive && p.isSensitiveHeader(key) {
 				info.AllHeaders[key] = p.maskToken(values[0])
 			} else {
 				info.AllHeaders[key] = values[0]
@@ -252,7 +240,7 @@ func (p *Parser) maskToken(token string) string {
 
 func (p *Parser) isSensitiveHeader(key string) bool {
 	sensitiveHeaders := []string{
-		HeaderAuthorization,
+		headers.HeaderAuthorization,
 	}
 
 	key = strings.ToLower(key)
@@ -262,4 +250,13 @@ func (p *Parser) isSensitiveHeader(key string) bool {
 		}
 	}
 	return false
+}
+
+// GetFirst returns the first value for a metadata key, or an empty string if not present.
+func GetFirst(md metadata.MD, key string) string {
+	val := md.Get(key)
+	if len(val) > 0 {
+		return val[0]
+	}
+	return ""
 }
