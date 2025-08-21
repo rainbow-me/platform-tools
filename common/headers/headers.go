@@ -14,6 +14,9 @@ const (
 	// of a business transaction through various microservices
 	HeaderXCorrelationID = "x-correlation-id"
 
+	// HeaderXCorrelationData contains correlation data consisting of multiple json-encoded key-value pairs
+	HeaderXCorrelationData = "x-correlation-data"
+
 	// HeaderXTraceID is used for distributed tracing to track requests across
 	// multiple services and create a complete trace of the request journey.
 	// Used with Datadog APM

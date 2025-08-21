@@ -6,13 +6,14 @@ import (
 	"github.com/rainbow-me/platform-tools/common/correlation"
 	"github.com/rainbow-me/platform-tools/common/headers"
 	"github.com/rainbow-me/platform-tools/common/metadata"
+	"github.com/rainbow-me/platform-tools/observability"
 )
 
 // CorrelationMiddleware extracts correlation data from http headers if found and propagates it as Go context.
 // If no header is found, it will create a new correlation id.
 func CorrelationMiddleware(c *gin.Context) {
 	ctx := c.Request.Context()
-	h := c.GetHeader(correlation.ContextCorrelationHeader) // TODO why is this a correlation-id header?
+	h := c.GetHeader(correlation.ContextCorrelationHeader)
 	ctx = correlation.ContextWithCorrelation(ctx, h)
 	c.Request = c.Request.WithContext(ctx)
 }
@@ -27,5 +28,10 @@ func RequestInfoMiddleware(c *gin.Context) {
 	}
 	ctx := c.Request.Context()
 	ctx = metadata.ContextWithRequestInfo(ctx, requestInfo)
+
+	if requestInfo.RequestID != "" {
+		observability.SetTag(ctx, observability.KeyRequestID, requestInfo.RequestID)
+	}
+
 	c.Request = c.Request.WithContext(ctx)
 }

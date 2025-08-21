@@ -9,6 +9,7 @@ import (
 	"github.com/rainbow-me/platform-tools/common/headers"
 	commonmeta "github.com/rainbow-me/platform-tools/common/metadata"
 	internalmetadata "github.com/rainbow-me/platform-tools/grpc/metadata"
+	"github.com/rainbow-me/platform-tools/observability"
 )
 
 // RequestContextUnaryServerInterceptor creates a gRPC interceptor that extracts RequestInfo
@@ -24,6 +25,10 @@ func RequestContextUnaryServerInterceptor() grpc.UnaryServerInterceptor {
 			MaskSensitive:     true,
 		})
 		updatedCtx, requestInfo := parser.ParseMetadata(ctx)
+
+		if requestInfo.RequestID != "" {
+			observability.SetTag(ctx, observability.KeyRequestID, requestInfo.RequestID)
+		}
 
 		// Add to context for handlers using custom context key type
 		ctxWithInfo := commonmeta.ContextWithRequestInfo(updatedCtx, *requestInfo)

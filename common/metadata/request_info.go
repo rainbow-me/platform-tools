@@ -29,7 +29,7 @@ type requestContextKey struct{}
 
 func ContextWithRequestInfo(ctx context.Context, requestInfo RequestInfo) context.Context {
 	ctx = context.WithValue(ctx, requestContextKey{}, requestInfo)
-	return logger.ContextWithFields(ctx, requestInfo.ToLogFields())
+	return logger.ContextWithFields(ctx, requestInfo.ToLogFields()...)
 }
 
 // GetRequestInfoFromContext extracts RequestInfo from context
