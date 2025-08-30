@@ -41,11 +41,9 @@ var (
 	Int8        = zap.Int8
 	Int8s       = zap.Int8s
 	Object      = zap.Object
-	Objects     = zap.Objects
 	String      = zap.String
 	Strings     = zap.Strings
 	Stringer    = zap.Stringer
-	Stringers   = zap.Stringers
 	Uint        = zap.Uint
 	Uints       = zap.Uints
 	Uint64      = zap.Uint64
