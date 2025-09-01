@@ -103,7 +103,11 @@ func (l *Logger) Errorf(msg string, v ...any) {
 	}
 }
 
-func (l *Logger) Fatal(msg string, v ...any) {
+func (l *Logger) Fatal(msg string, fields ...Field) {
+	l.zap.Fatal(msg, fields...)
+}
+
+func (l *Logger) Fatalf(msg string, v ...any) {
 	if len(v) > 0 {
 		l.zap.Sugar().Fatalf(msg, v...)
 	} else {
