@@ -103,7 +103,11 @@ func (l *Logger) Errorf(msg string, v ...any) {
 	}
 }
 
-func (l *Logger) Fatal(msg string, v ...any) {
+func (l *Logger) Fatal(msg string, fields ...Field) {
+	l.zap.Fatal(msg, fields...)
+}
+
+func (l *Logger) Fatalf(msg string, v ...any) {
 	if len(v) > 0 {
 		l.zap.Sugar().Fatalf(msg, v...)
 	} else {
@@ -111,7 +115,11 @@ func (l *Logger) Fatal(msg string, v ...any) {
 	}
 }
 
-func (l *Logger) Panic(msg string, v ...any) {
+func (l *Logger) Panic(msg string, fields ...Field) {
+	l.zap.Panic(msg, fields...)
+}
+
+func (l *Logger) Panicf(msg string, v ...any) {
 	if len(v) > 0 {
 		l.zap.Sugar().Panicf(msg, v...)
 	} else {
@@ -119,7 +127,11 @@ func (l *Logger) Panic(msg string, v ...any) {
 	}
 }
 
-func (l *Logger) DPanic(msg string, v ...any) {
+func (l *Logger) DPanic(msg string, fields ...Field) {
+	l.zap.DPanic(msg, fields...)
+}
+
+func (l *Logger) DPanicf(msg string, v ...any) {
 	if len(v) > 0 {
 		l.zap.Sugar().DPanicf(msg, v...)
 	} else {
