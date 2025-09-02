@@ -58,6 +58,7 @@ var (
 	Uintptrs    = zap.Uintptrs
 	Error       = zap.Error
 	Errors      = zap.Errors
+	Time        = zap.Time
 )
 
 type Level zapcore.Level
