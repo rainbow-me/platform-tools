@@ -6,6 +6,7 @@ import (
 
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"github.com/samber/lo"
+	"go.uber.org/zap"
 
 	"github.com/rainbow-me/platform-tools/common/logger"
 )
@@ -94,7 +95,6 @@ func InitObservability(serviceName, env string, log *logger.Logger, opts ...Opti
 	if !enabled {
 		return func() {} // no-op StopFunc
 	}
-	log.Info("Starting tracer")
 	cfg := &config{
 		MetricsEnabled:   true,
 		AnalyticsEnabled: true,
@@ -126,6 +126,14 @@ func InitObservability(serviceName, env string, log *logger.Logger, opts ...Opti
 	if cfg.MetricsEnabled {
 		tracerOpts = append(tracerOpts, tracer.WithRuntimeMetrics())
 	}
+
+	log.Info("Starting tracer",
+		zap.String("service", serviceName),
+		zap.String("env", env),
+		zap.Bool("metrics_enabled", cfg.MetricsEnabled),
+		zap.Bool("analytics_enabled", cfg.AnalyticsEnabled),
+		zap.Any("sampling_rules", samplingRules),
+	)
 
 	if err := tracer.Start(tracerOpts...); err != nil {
 		log.Error("Failed to start tracer", logger.Error(err))
