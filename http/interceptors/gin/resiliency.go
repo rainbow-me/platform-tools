@@ -40,10 +40,9 @@ func ErrorHandlingMiddleware(c *gin.Context) {
 // PanicRecoveryMiddleware handles panics, logs them appropriately with our logging framework
 // and tags the span with the error
 func PanicRecoveryMiddleware(c *gin.Context) {
-	log := logger.FromContext(c)
 	defer func() {
 		if r := recover(); r != nil {
-			log.Error("Recovered from panic in gin http handler", logger.WithPanic(r)...)
+			logger.FromContext(c).Error("Recovered from panic in gin http handler", logger.WithPanic(r)...)
 			if env.IsLocalApplicationEnv() {
 				// pretty print the stack trace to the local console to make it human-readable
 				_, _ = fmt.Fprintf(os.Stderr, "%s\n", debug.Stack())

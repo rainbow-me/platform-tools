@@ -78,14 +78,10 @@ func DefaultInterceptors(opts ...InterceptorOpt) []gin.HandlerFunc {
 	for _, opt := range opts {
 		opt(cfg)
 	}
-	middlewares := []gin.HandlerFunc{
-		RequestLogging(loggingCfg{
-			debug: cfg.HTTPDebug,
-			trace: cfg.HTTPTrace,
-		}),
-		PanicRecoveryMiddleware,
-		ErrorHandlingMiddleware,
-	}
+	// Start at top level with panic interceptor to avoid crashing the process
+	middlewares := []gin.HandlerFunc{PanicRecoveryMiddleware}
+
+	// Add tracing/correlation interceptors first so any further interceptor prints logs with trace/correlation IDs
 	if cfg.TracingEnabled {
 		middlewares = append(middlewares, TracingMiddleware)
 	}
@@ -93,6 +89,12 @@ func DefaultInterceptors(opts ...InterceptorOpt) []gin.HandlerFunc {
 		middlewares = append(middlewares, CorrelationMiddleware)
 		middlewares = append(middlewares, RequestInfoMiddleware)
 	}
+	middlewares = append(middlewares, RequestLogging(loggingCfg{
+		debug: cfg.HTTPDebug,
+		trace: cfg.HTTPTrace,
+	}))
+	middlewares = append(middlewares, ErrorHandlingMiddleware)
+
 	if cfg.CompressionLevel != gzip.NoCompression {
 		middlewares = append(middlewares, gzip.Gzip(cfg.CompressionLevel))
 	}
